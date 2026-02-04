@@ -12,6 +12,7 @@ import OnboardingFlow from '@/features/onboarding/OnboardingFlow';
 import RootNavigator from '@/navigation/RootNavigator';
 import { colors, spacing } from '@/theme';
 import { AppText } from '@/ui';
+import { useAppStore } from '@/state/appStore';
 
 enableScreens();
 
@@ -19,7 +20,8 @@ const shouldSeed = process.env.EXPO_PUBLIC_SEED_DB === 'true';
 
 export default function App() {
   const [ready, setReady] = useState(false);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const needsOnboarding = useAppStore((state) => state.needsOnboarding);
+  const setNeedsOnboarding = useAppStore((state) => state.setNeedsOnboarding);
 
   useEffect(() => {
     let mounted = true;

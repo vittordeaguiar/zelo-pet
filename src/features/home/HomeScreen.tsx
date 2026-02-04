@@ -13,16 +13,19 @@ import {
   Bone,
   Check,
   ChevronDown,
+  ChevronUp,
   Droplets,
   Footprints,
   MapPin,
   Play,
   Plus,
+  Pencil,
+  Trash2,
   Timer,
   X,
 } from 'lucide-react-native';
 
-import { activitiesRepo, petsRepo } from '@/data/repositories';
+import { activitiesRepo, petsRepo, tutorsRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing, typography } from '@/theme';
 import { AppText, Button, Card, IconButton, Input, useScreenPadding } from '@/ui';
@@ -74,14 +77,18 @@ const getIcon = (name: string | null | undefined) => {
 
 export default function HomeScreen() {
   const [pets, setPets] = useState<petsRepo.Pet[]>([]);
+  const [tutorName, setTutorName] = useState('');
   const [templates, setTemplates] = useState<Template[]>([]);
   const [activityCounts, setActivityCounts] = useState<ActivityCounts>({});
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [petModalVisible, setPetModalVisible] = useState(false);
   const [activityModalVisible, setActivityModalVisible] = useState(false);
+  const [manageModalVisible, setManageModalVisible] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [newActivityTitle, setNewActivityTitle] = useState('');
   const [newActivityTarget, setNewActivityTarget] = useState('');
   const [newActivityType, setNewActivityType] = useState<'register' | 'timer'>('register');
+  const [newActivityIcon, setNewActivityIcon] = useState('bone');
   const [timerState, setTimerState] = useState<ActivityTimerState>({
     template: null,
     visible: false,
@@ -165,6 +172,10 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!activePetId) return;
     loadChecklist(activePetId, dateKey).catch((error) => console.error('loadChecklist', error));
+    tutorsRepo
+      .getTutorsByPet(activePetId)
+      .then((data) => setTutorName(data[0]?.name ?? ''))
+      .catch((error) => console.error('loadTutors', error));
   }, [activePetId, dateKey]);
 
   useEffect(() => {
@@ -238,7 +249,7 @@ export default function HomeScreen() {
     await activitiesRepo.createTemplate({
       petId: activePetId,
       title: newActivityTitle.trim(),
-      icon: newActivityType === 'timer' ? 'play' : 'bone',
+      icon: newActivityIcon,
       targetCountPerDay: Number.isNaN(parsedTarget) ? undefined : parsedTarget,
       isTimer: newActivityType === 'timer',
       sortOrder: templates.length + 1,
@@ -247,9 +258,71 @@ export default function HomeScreen() {
     setNewActivityTitle('');
     setNewActivityTarget('');
     setNewActivityType('register');
+    setNewActivityIcon('bone');
     setActivityModalVisible(false);
 
     await loadChecklist(activePetId, dateKey);
+  };
+
+  const openEditTemplate = (template: Template) => {
+    setManageModalVisible(false);
+    setEditingTemplate(template);
+    setNewActivityTitle(template.title);
+    setNewActivityTarget(template.targetCountPerDay ? String(template.targetCountPerDay) : '');
+    setNewActivityType(template.isTimer ? 'timer' : 'register');
+    setNewActivityIcon(template.icon ?? 'bone');
+    setActivityModalVisible(true);
+  };
+
+  const handleUpdateActivity = async () => {
+    if (!editingTemplate) return;
+    const target = newActivityTarget.trim();
+    const parsedTarget = target ? Number.parseInt(target, 10) : undefined;
+
+    await activitiesRepo.updateTemplate(editingTemplate.id, {
+      title: newActivityTitle.trim() || editingTemplate.title,
+      icon: newActivityIcon,
+      targetCountPerDay: Number.isNaN(parsedTarget) ? undefined : parsedTarget,
+      isTimer: newActivityType === 'timer',
+    });
+
+    setEditingTemplate(null);
+    setNewActivityTitle('');
+    setNewActivityTarget('');
+    setNewActivityType('register');
+    setNewActivityIcon('bone');
+    setActivityModalVisible(false);
+    await loadChecklist(editingTemplate.petId, dateKey);
+  };
+
+  const handleDeleteTemplate = async (template: Template) => {
+    await activitiesRepo.deleteTemplate(template.id);
+    await loadChecklist(template.petId, dateKey);
+  };
+
+  const moveTemplate = async (template: Template, direction: 'up' | 'down') => {
+    const index = templates.findIndex((item) => item.id === template.id);
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (index < 0 || targetIndex < 0 || targetIndex >= templates.length) return;
+
+    const current = templates[index];
+    const target = templates[targetIndex];
+
+    const currentOrder = current.sortOrder ?? index + 1;
+    const targetOrder = target.sortOrder ?? targetIndex + 1;
+
+    await activitiesRepo.updateTemplate(current.id, { sortOrder: targetOrder });
+    await activitiesRepo.updateTemplate(target.id, { sortOrder: currentOrder });
+    await loadChecklist(current.petId, dateKey);
+  };
+
+  const closeActivityModal = () => {
+    setActivityModalVisible(false);
+    setEditingTemplate(null);
+    setNewActivityTitle('');
+    setNewActivityTarget('');
+    setNewActivityType('register');
+    setNewActivityIcon('bone');
   };
 
   const renderPetCard = () => (
@@ -289,13 +362,20 @@ export default function HomeScreen() {
             {Math.round(progress * 100)}% concluído
           </AppText>
         </View>
-        <IconButton
-          icon={<Plus size={18} color="white" />}
-          variant="primary"
-          onPress={() => setActivityModalVisible(true)}
-          size={44}
-          style={styles.addButton}
-        />
+        <View style={styles.checklistActions}>
+          <Pressable onPress={() => setManageModalVisible(true)}>
+            <AppText variant="caption" color={colors.primary}>
+              Gerenciar
+            </AppText>
+          </Pressable>
+          <IconButton
+            icon={<Plus size={18} color="white" />}
+            variant="primary"
+            onPress={() => setActivityModalVisible(true)}
+            size={44}
+            style={styles.addButton}
+          />
+        </View>
       </View>
 
       <View style={styles.progressTrack}>
@@ -365,7 +445,7 @@ export default function HomeScreen() {
             <AppText variant="caption" color={colors.textSecondary}>
               Bom dia,
             </AppText>
-            <AppText variant="title">Ana Silva</AppText>
+            <AppText variant="title">{tutorName || 'Olá'}</AppText>
             <View style={styles.locationRow}>
               <MapPin size={12} color={colors.primary} />
               <AppText variant="caption" color={colors.textSecondary}>
@@ -439,8 +519,10 @@ export default function HomeScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContentLarge}>
             <View style={styles.modalHeader}>
-              <AppText variant="subtitle">Adicionar atividade</AppText>
-              <Pressable onPress={() => setActivityModalVisible(false)}>
+              <AppText variant="subtitle">
+                {editingTemplate ? 'Editar atividade' : 'Adicionar atividade'}
+              </AppText>
+              <Pressable onPress={closeActivityModal}>
                 <X size={18} color={colors.textSecondary} />
               </Pressable>
             </View>
@@ -483,7 +565,72 @@ export default function HomeScreen() {
               </Pressable>
             </View>
 
-            <Button label="Salvar atividade" onPress={handleAddActivity} />
+            <View style={styles.iconPickerRow}>
+              {Object.keys(iconMap).map((iconKey) => {
+                const Icon = getIcon(iconKey);
+                const selected = newActivityIcon === iconKey;
+                return (
+                  <Pressable
+                    key={iconKey}
+                    onPress={() => setNewActivityIcon(iconKey)}
+                    style={[styles.iconChip, selected && styles.iconChipSelected]}
+                  >
+                    <Icon size={18} color={selected ? '#fff' : colors.textSecondary} />
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Button
+              label={editingTemplate ? 'Salvar alterações' : 'Salvar atividade'}
+              onPress={editingTemplate ? handleUpdateActivity : handleAddActivity}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={manageModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setManageModalVisible(false)} />
+          <View style={styles.modalContentLarge}>
+            <View style={styles.modalHeader}>
+              <AppText variant="subtitle">Gerenciar atividades</AppText>
+              <Pressable onPress={() => setManageModalVisible(false)}>
+                <X size={18} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+            {templates.map((template) => (
+              <View key={template.id} style={styles.manageRow}>
+                <View style={styles.manageInfo}>
+                  <AppText variant="body">{template.title}</AppText>
+                  <AppText variant="caption" color={colors.textSecondary}>
+                    {template.targetCountPerDay ?? 1}x ao dia • {template.isTimer ? 'Timer' : 'Registro'}
+                  </AppText>
+                </View>
+                <View style={styles.manageActions}>
+                  <Pressable onPress={() => moveTemplate(template, 'up')} style={styles.iconAction}>
+                    <ChevronUp size={16} color={colors.textSecondary} />
+                  </Pressable>
+                  <Pressable onPress={() => moveTemplate(template, 'down')} style={styles.iconAction}>
+                    <ChevronDown size={16} color={colors.textSecondary} />
+                  </Pressable>
+                  <Pressable onPress={() => openEditTemplate(template)} style={styles.iconAction}>
+                    <Pencil size={16} color={colors.textSecondary} />
+                  </Pressable>
+                  <Pressable onPress={() => handleDeleteTemplate(template)} style={styles.iconActionDanger}>
+                    <Trash2 size={16} color={colors.danger} />
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+            <Button
+              label="Adicionar atividade"
+              onPress={() => {
+                setManageModalVisible(false);
+                setEditingTemplate(null);
+                setActivityModalVisible(true);
+              }}
+            />
           </View>
         </View>
       </Modal>
@@ -595,6 +742,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  checklistActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   addButton: {
     backgroundColor: colors.primary,
     borderRadius: radii.lg,
@@ -702,6 +854,58 @@ const styles = StyleSheet.create({
   typeRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  iconPickerRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  iconChip: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  iconChipSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  manageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  manageInfo: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  manageActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  iconAction: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconActionDanger: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   typeButton: {
     flex: 1,

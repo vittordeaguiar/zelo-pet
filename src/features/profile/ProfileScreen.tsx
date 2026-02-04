@@ -20,9 +20,12 @@ import {
   Users,
   X,
 } from 'lucide-react-native';
+import { Alert } from 'react-native';
 
+import { resetAppData } from '@/data/reset';
 import { petsRepo, tutorsRepo, vaccinesRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
+import { useAppStore } from '@/state/appStore';
 import { colors, radii, spacing } from '@/theme';
 import { AppText, Button, Card, IconButton, Input, useScreenPadding } from '@/ui';
 
@@ -45,12 +48,14 @@ type VaccineForm = {
 export default function ProfileScreen() {
   const activePetId = useActivePetStore((state) => state.activePetId);
   const setActivePetId = useActivePetStore((state) => state.setActivePetId);
+  const setNeedsOnboarding = useAppStore((state) => state.setNeedsOnboarding);
   const screenPadding = useScreenPadding();
   const [pet, setPet] = useState<petsRepo.Pet | null>(null);
   const [tutors, setTutors] = useState<tutorsRepo.Tutor[]>([]);
   const [vaccines, setVaccines] = useState<vaccinesRepo.VaccineRecord[]>([]);
   const [tutorModalVisible, setTutorModalVisible] = useState(false);
   const [vaccineModalVisible, setVaccineModalVisible] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const [newTutorName, setNewTutorName] = useState('');
   const [newTutorRole, setNewTutorRole] = useState('');
   const [vaccineForm, setVaccineForm] = useState<VaccineForm>({
@@ -191,6 +196,26 @@ export default function ProfileScreen() {
     await loadData();
   };
 
+  const handleResetApp = async () => {
+    Alert.alert(
+      'Resetar aplicativo?',
+      'Isso apagará todos os dados locais e reiniciará o onboarding.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Resetar',
+          style: 'destructive',
+          onPress: async () => {
+            await resetAppData();
+            setActivePetId(null);
+            setNeedsOnboarding(true);
+            setSettingsVisible(false);
+          },
+        },
+      ],
+    );
+  };
+
   if (!pet) {
     return (
       <View style={styles.emptyState}>
@@ -207,7 +232,10 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={[styles.content, screenPadding]} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <AppText variant="title">Perfil do Pet</AppText>
-          <IconButton icon={<Settings size={18} color={colors.textSecondary} />} onPress={() => {}} />
+          <IconButton
+            icon={<Settings size={18} color={colors.textSecondary} />}
+            onPress={() => setSettingsVisible(true)}
+          />
         </View>
 
         <Card style={styles.heroCard}>
@@ -436,6 +464,30 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={settingsVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSettingsVisible(false)} />
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <AppText variant="subtitle">Configurações</AppText>
+              <Pressable onPress={() => setSettingsVisible(false)}>
+                <X size={18} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            <View style={styles.resetCard}>
+              <AppText variant="body" style={styles.resetTitle}>
+                Resetar aplicativo
+              </AppText>
+              <AppText variant="caption" color={colors.textSecondary}>
+                Apaga todos os dados locais e reinicia o onboarding.
+              </AppText>
+              <Button label="Resetar agora" onPress={handleResetApp} />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -622,5 +674,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  resetCard: {
+    gap: spacing.sm,
+  },
+  resetTitle: {
+    fontWeight: '600',
   },
 });

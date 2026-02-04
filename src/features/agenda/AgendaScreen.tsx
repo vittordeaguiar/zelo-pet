@@ -12,11 +12,17 @@ import {
   ChevronLeft,
   ChevronRight,
   CloudRain,
+  Cloud,
+  CloudDrizzle,
+  CloudFog,
+  CloudLightning,
+  CloudSnow,
   MapPin,
   Pencil,
   Plus,
   Sun,
   Trash2,
+  Wind,
   X,
 } from 'lucide-react-native';
 import * as Location from 'expo-location';
@@ -292,6 +298,18 @@ export default function AgendaScreen() {
     await loadReminders();
   };
 
+  const renderWeatherIcon = () => {
+    if (!weather) return <Cloud size={24} color={colors.primary} />;
+    const condition = weather.condition.toLowerCase();
+    if (condition.includes('tempestade')) return <CloudLightning size={24} color={colors.primary} />;
+    if (condition.includes('chuva forte')) return <CloudRain size={24} color={colors.primary} />;
+    if (condition.includes('chuva')) return <CloudDrizzle size={24} color={colors.primary} />;
+    if (condition.includes('neve')) return <CloudSnow size={24} color={colors.primary} />;
+    if (condition.includes('neblina')) return <CloudFog size={24} color={colors.primary} />;
+    if (condition.includes('nublado')) return <Cloud size={24} color={colors.primary} />;
+    return <Sun size={24} color={colors.primary} />;
+  };
+
   const renderWeatherCard = () => {
     if (weatherLoading && !weather) {
       return (
@@ -325,6 +343,11 @@ export default function AgendaScreen() {
       );
     }
 
+    const maxMin =
+      weather.tempMax !== undefined && weather.tempMin !== undefined
+        ? `H:${Math.round(weather.tempMax)}°  L:${Math.round(weather.tempMin)}°`
+        : null;
+
     return (
       <Card style={styles.weatherCard}>
         <View style={styles.weatherHeader}>
@@ -338,17 +361,26 @@ export default function AgendaScreen() {
             </View>
           </View>
           <View style={styles.weatherIconWrap}>
-            {weather.condition.toLowerCase().includes('chuva') ? (
-              <CloudRain size={24} color={colors.primary} />
-            ) : (
-              <Sun size={24} color={colors.primary} />
-            )}
+            {renderWeatherIcon()}
           </View>
         </View>
 
-        <AppText variant="body" style={styles.weatherCondition}>
-          {weather.condition}
-        </AppText>
+        <View style={styles.weatherMetaRow}>
+          <AppText variant="body" style={styles.weatherCondition}>
+            {weather.condition}
+          </AppText>
+          {maxMin ? (
+            <AppText variant="caption" color={colors.textSecondary}>
+              {maxMin}
+            </AppText>
+          ) : null}
+        </View>
+        <View style={styles.weatherWindRow}>
+          <Wind size={14} color={colors.textSecondary} />
+          <AppText variant="caption" color={colors.textSecondary}>
+            Vento {Math.round(weather.windSpeed)} km/h
+          </AppText>
+        </View>
         {insights ? (
           <View style={styles.insightsBox}>
             {insights.lines.map((line, index) => (
@@ -621,6 +653,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   weatherLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  weatherMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  weatherWindRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,

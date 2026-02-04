@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type WeatherData = {
   temperature: number;
+  tempMax?: number;
+  tempMin?: number;
   windSpeed: number;
   weatherCode: number;
   condition: string;
@@ -46,20 +48,31 @@ export type WeatherInsights = {
 
 export const buildInsights = (data: WeatherData): WeatherInsights => {
   const lines: string[] = [];
-  if (data.temperature >= 30) {
+  const temp = data.temperature;
+  const condition = data.condition.toLowerCase();
+
+  if (temp >= 32) {
+    lines.push('Calor intenso: evite horários de sol forte e prefira passeios curtos.');
+  } else if (temp >= 26) {
     lines.push('Dia quente: ofereça água fresca e pausas na sombra.');
-  } else if (data.temperature <= 12) {
+  } else if (temp <= 10) {
     lines.push('Clima frio: passeios mais curtos e proteção extra ajudam.');
+  } else if (temp <= 15) {
+    lines.push('Temperatura baixa: aqueça seu pet após o passeio.');
   } else {
     lines.push('Temperatura amena: ótimo para atividades ao ar livre.');
   }
 
-  if (data.condition.toLowerCase().includes('chuva') || data.condition.toLowerCase().includes('tempestade')) {
+  if (condition.includes('chuva') || condition.includes('tempestade')) {
     lines.push('Leve capa/guarda-chuva e evite áreas escorregadias.');
-  } else if (data.condition.toLowerCase().includes('nublado')) {
-    lines.push('Boa visibilidade para passeios mais longos.');
-  } else if (data.condition.toLowerCase().includes('neblina')) {
+  } else if (condition.includes('neve')) {
+    lines.push('Superfícies frias podem incomodar as patinhas.');
+  } else if (condition.includes('neblina')) {
     lines.push('Atenção redobrada em ambientes externos.');
+  } else if (condition.includes('nublado')) {
+    lines.push('Boa visibilidade para passeios mais longos.');
+  } else if (condition.includes('ensolarado')) {
+    lines.push('Passeios pela manhã ou no fim da tarde são mais confortáveis.');
   }
 
   return {
@@ -113,7 +126,7 @@ export const fetchWeather = async (
   longitude: number,
   locationLabel: string,
 ): Promise<WeatherData> => {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error('Weather request failed');
@@ -124,6 +137,10 @@ export const fetchWeather = async (
       windspeed: number;
       weathercode: number;
     };
+    daily?: {
+      temperature_2m_max?: number[];
+      temperature_2m_min?: number[];
+    };
   };
 
   const current = data.current_weather;
@@ -133,6 +150,8 @@ export const fetchWeather = async (
 
   const payload: WeatherData = {
     temperature: current.temperature,
+    tempMax: data.daily?.temperature_2m_max?.[0],
+    tempMin: data.daily?.temperature_2m_min?.[0],
     windSpeed: current.windspeed,
     weatherCode: current.weathercode,
     condition,
