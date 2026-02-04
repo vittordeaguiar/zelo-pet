@@ -1,0 +1,66 @@
+import React from 'react';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Calendar, Home, Image, Search, User } from 'lucide-react-native';
+
+import { colors } from '@/theme';
+import AgendaScreen from '@/features/agenda/AgendaScreen';
+import ExploreScreen from '@/features/explore/ExploreScreen';
+import HomeScreen from '@/features/home/HomeScreen';
+import MemoriesScreen from '@/features/memories/MemoriesScreen';
+import ProfileScreen from '@/features/profile/ProfileScreen';
+
+type RootTabParamList = {
+  Home: undefined;
+  Agenda: undefined;
+  Memorias: undefined;
+  Explorar: undefined;
+  Perfil: undefined;
+};
+
+const Tab = createBottomTabNavigator<RootTabParamList>();
+
+export default function RootNavigator() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          paddingTop: 6,
+          height: 64,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          marginBottom: 6,
+        },
+        tabBarIcon: ({ color, size }) => {
+          const iconProps = { color, size };
+          switch (route.name) {
+            case 'Home':
+              return <Home {...iconProps} />;
+            case 'Agenda':
+              return <Calendar {...iconProps} />;
+            case 'Memorias':
+              return <Image {...iconProps} />;
+            case 'Explorar':
+              return <Search {...iconProps} />;
+            case 'Perfil':
+              return <User {...iconProps} />;
+            default:
+              return <Home {...iconProps} />;
+          }
+        },
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Agenda" component={AgendaScreen} />
+      <Tab.Screen name="Memorias" component={MemoriesScreen} />
+      <Tab.Screen name="Explorar" component={ExploreScreen} />
+      <Tab.Screen name="Perfil" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+}
