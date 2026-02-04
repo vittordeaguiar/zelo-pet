@@ -13,7 +13,6 @@ import {
   Bone,
   Check,
   ChevronDown,
-  ChevronUp,
   Droplets,
   Footprints,
   MapPin,
@@ -24,6 +23,10 @@ import {
   Timer,
   X,
 } from 'lucide-react-native';
+import DraggableFlatList, {
+  RenderItemParams,
+} from 'react-native-draggable-flatlist';
+import { Vibration } from 'react-native';
 
 import { activitiesRepo, petsRepo, tutorsRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
@@ -300,20 +303,11 @@ export default function HomeScreen() {
     await loadChecklist(template.petId, dateKey);
   };
 
-  const moveTemplate = async (template: Template, direction: 'up' | 'down') => {
-    const index = templates.findIndex((item) => item.id === template.id);
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (index < 0 || targetIndex < 0 || targetIndex >= templates.length) return;
-
-    const current = templates[index];
-    const target = templates[targetIndex];
-
-    const currentOrder = current.sortOrder ?? index + 1;
-    const targetOrder = target.sortOrder ?? targetIndex + 1;
-
-    await activitiesRepo.updateTemplate(current.id, { sortOrder: targetOrder });
-    await activitiesRepo.updateTemplate(target.id, { sortOrder: currentOrder });
-    await loadChecklist(current.petId, dateKey);
+  const handleReorderTemplates = async (data: Template[]) => {
+    setTemplates(data);
+    await Promise.all(
+      data.map((item, index) => activitiesRepo.updateTemplate(item.id, { sortOrder: index + 1 })),
+    );
   };
 
   const closeActivityModal = () => {
@@ -599,30 +593,35 @@ export default function HomeScreen() {
                 <X size={18} color={colors.textSecondary} />
               </Pressable>
             </View>
-            {templates.map((template) => (
-              <View key={template.id} style={styles.manageRow}>
-                <View style={styles.manageInfo}>
-                  <AppText variant="body">{template.title}</AppText>
-                  <AppText variant="caption" color={colors.textSecondary}>
-                    {template.targetCountPerDay ?? 1}x ao dia • {template.isTimer ? 'Timer' : 'Registro'}
-                  </AppText>
-                </View>
-                <View style={styles.manageActions}>
-                  <Pressable onPress={() => moveTemplate(template, 'up')} style={styles.iconAction}>
-                    <ChevronUp size={16} color={colors.textSecondary} />
-                  </Pressable>
-                  <Pressable onPress={() => moveTemplate(template, 'down')} style={styles.iconAction}>
-                    <ChevronDown size={16} color={colors.textSecondary} />
-                  </Pressable>
-                  <Pressable onPress={() => openEditTemplate(template)} style={styles.iconAction}>
-                    <Pencil size={16} color={colors.textSecondary} />
-                  </Pressable>
-                  <Pressable onPress={() => handleDeleteTemplate(template)} style={styles.iconActionDanger}>
-                    <Trash2 size={16} color={colors.danger} />
-                  </Pressable>
-                </View>
-              </View>
-            ))}
+            <DraggableFlatList
+              data={templates}
+              keyExtractor={(item) => item.id}
+              onDragEnd={({ data }) => handleReorderTemplates(data)}
+              renderItem={({ item, drag, isActive }: RenderItemParams<Template>) => (
+                <Pressable
+                  onLongPress={() => {
+                    Vibration.vibrate(10);
+                    drag();
+                  }}
+                  style={[styles.manageRow, isActive && styles.manageRowActive]}
+                >
+                  <View style={styles.manageInfo}>
+                    <AppText variant="body">{item.title}</AppText>
+                    <AppText variant="caption" color={colors.textSecondary}>
+                      {item.targetCountPerDay ?? 1}x ao dia • {item.isTimer ? 'Timer' : 'Registro'}
+                    </AppText>
+                  </View>
+                  <View style={styles.manageActions}>
+                    <Pressable onPress={() => openEditTemplate(item)} style={styles.iconAction}>
+                      <Pencil size={16} color={colors.textSecondary} />
+                    </Pressable>
+                    <Pressable onPress={() => handleDeleteTemplate(item)} style={styles.iconActionDanger}>
+                      <Trash2 size={16} color={colors.danger} />
+                    </Pressable>
+                  </View>
+                </Pressable>
+              )}
+            />
             <Button
               label="Adicionar atividade"
               onPress={() => {
@@ -880,6 +879,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  manageRowActive: {
+    backgroundColor: colors.primarySoft,
   },
   manageInfo: {
     flex: 1,
