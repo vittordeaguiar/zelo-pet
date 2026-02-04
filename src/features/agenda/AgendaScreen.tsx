@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -10,16 +11,29 @@ import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
+  CloudRain,
+  MapPin,
   Pencil,
   Plus,
+  Sun,
   Trash2,
   X,
 } from 'lucide-react-native';
+import * as Location from 'expo-location';
 
 import { remindersRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing } from '@/theme';
 import { AppText, Button, Card, IconButton, Input, useScreenPadding } from '@/ui';
+import {
+  buildInsights,
+  fetchWeather,
+  geocodeLocation,
+  loadCachedWeather,
+  loadLocationPreference,
+  saveLocationPreference,
+  WeatherData,
+} from '@/features/agenda/weather';
 
 const dayLabels = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const reminderTypes = [
@@ -101,6 +115,13 @@ export default function AgendaScreen() {
     notes: '',
   });
 
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+  const [weatherModalVisible, setWeatherModalVisible] = useState(false);
+  const [manualLocation, setManualLocation] = useState('');
+  const [locationStatus, setLocationStatus] = useState<'unknown' | 'granted' | 'denied'>('unknown');
+
   const activePetId = useActivePetStore((state) => state.activePetId);
   const screenPadding = useScreenPadding();
 
@@ -111,6 +132,8 @@ export default function AgendaScreen() {
     return reminders.filter((reminder) => reminder.datetime.startsWith(dateKey));
   }, [reminders, dateKey]);
 
+  const insights = weather ? buildInsights(weather) : null;
+
   const loadReminders = async () => {
     if (!activePetId) {
       setReminders([]);
@@ -120,9 +143,82 @@ export default function AgendaScreen() {
     setReminders(data);
   };
 
+  const refreshWeather = async () => {
+    setWeatherLoading(true);
+    setWeatherError(null);
+
+    try {
+      const cached = await loadCachedWeather();
+      if (cached) {
+        setWeather(cached);
+      }
+
+      const storedLocation = await loadLocationPreference();
+      if (storedLocation) {
+        const latest = await fetchWeather(
+          storedLocation.latitude,
+          storedLocation.longitude,
+          storedLocation.label,
+        );
+        setWeather(latest);
+        setLocationStatus('granted');
+        return;
+      }
+
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setLocationStatus('denied');
+        if (!cached) setWeatherError('Sem permissão de localização');
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({});
+      const reverse = await Location.reverseGeocodeAsync({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      });
+      const label = reverse[0]?.city ?? reverse[0]?.subregion ?? 'Sua localização';
+
+      await saveLocationPreference(position.coords.latitude, position.coords.longitude, label);
+      const latest = await fetchWeather(position.coords.latitude, position.coords.longitude, label);
+      setWeather(latest);
+      setLocationStatus('granted');
+    } catch (error) {
+      setWeatherError('Não foi possível atualizar o clima.');
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+  const applyManualLocation = async () => {
+    if (!manualLocation.trim()) return;
+    setWeatherLoading(true);
+    try {
+      const geo = await geocodeLocation(manualLocation.trim());
+      if (!geo) {
+        setWeatherError('Não encontramos essa localização.');
+        return;
+      }
+      await saveLocationPreference(geo.latitude, geo.longitude, geo.label);
+      const latest = await fetchWeather(geo.latitude, geo.longitude, geo.label);
+      setWeather(latest);
+      setLocationStatus('granted');
+      setWeatherModalVisible(false);
+      setManualLocation('');
+    } catch {
+      setWeatherError('Não foi possível atualizar o clima.');
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadReminders().catch((error) => console.error('loadReminders', error));
   }, [activePetId]);
+
+  useEffect(() => {
+    refreshWeather().catch((error) => console.error('refreshWeather', error));
+  }, []);
 
   const navigateMonth = (direction: number) => {
     const nextMonth = new Date(currentMonth);
@@ -196,6 +292,91 @@ export default function AgendaScreen() {
     await loadReminders();
   };
 
+  const renderWeatherCard = () => {
+    if (weatherLoading && !weather) {
+      return (
+        <Card style={styles.weatherCard}>
+          <View style={styles.weatherRow}>
+            <ActivityIndicator color={colors.primary} />
+            <AppText variant="caption" color={colors.textSecondary}>
+              Carregando clima...
+            </AppText>
+          </View>
+        </Card>
+      );
+    }
+
+    if (!weather) {
+      return (
+        <Card style={styles.weatherCard}>
+          <View style={styles.weatherRow}>
+            <CloudRain size={20} color={colors.textSecondary} />
+            <View style={styles.weatherInfo}>
+              <AppText variant="body">Clima indisponível</AppText>
+              <AppText variant="caption" color={colors.textSecondary}>
+                {locationStatus === 'denied'
+                  ? 'Defina sua localização para ver o clima.'
+                  : 'Sem conexão ou localização.'}
+              </AppText>
+            </View>
+          </View>
+          <Button label="Definir localização" onPress={() => setWeatherModalVisible(true)} />
+        </Card>
+      );
+    }
+
+    return (
+      <Card style={styles.weatherCard}>
+        <View style={styles.weatherHeader}>
+          <View>
+            <AppText variant="subtitle">{Math.round(weather.temperature)}°</AppText>
+            <View style={styles.weatherLocation}>
+              <MapPin size={12} color={colors.textSecondary} />
+              <AppText variant="caption" color={colors.textSecondary}>
+                {weather.locationLabel}
+              </AppText>
+            </View>
+          </View>
+          <View style={styles.weatherIconWrap}>
+            {weather.condition.toLowerCase().includes('chuva') ? (
+              <CloudRain size={24} color={colors.primary} />
+            ) : (
+              <Sun size={24} color={colors.primary} />
+            )}
+          </View>
+        </View>
+
+        <AppText variant="body" style={styles.weatherCondition}>
+          {weather.condition}
+        </AppText>
+        {insights ? (
+          <View style={styles.insightsBox}>
+            {insights.lines.map((line, index) => (
+              <View key={`${line}-${index}`} style={styles.insightRow}>
+                <View style={styles.insightDot} />
+                <AppText variant="caption" color={colors.textSecondary} style={styles.insightText}>
+                  {line}
+                </AppText>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {weatherError ? (
+          <AppText variant="caption" color={colors.textSecondary}>
+            {weatherError}
+          </AppText>
+        ) : null}
+
+        <Pressable style={styles.refreshWeather} onPress={refreshWeather}>
+          <AppText variant="caption" color={colors.primary}>
+            Atualizar
+          </AppText>
+        </Pressable>
+      </Card>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={[styles.content, screenPadding]} showsVerticalScrollIndicator={false}>
@@ -208,6 +389,8 @@ export default function AgendaScreen() {
           </View>
           <IconButton icon={<Plus size={18} color="white" />} onPress={openCreateModal} variant="primary" />
         </View>
+
+        {renderWeatherCard()}
 
         <Card style={styles.calendarCard}>
           <View style={styles.calendarHeader}>
@@ -318,6 +501,28 @@ export default function AgendaScreen() {
         </Card>
       </ScrollView>
 
+      <Modal visible={weatherModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setWeatherModalVisible(false)} />
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <AppText variant="subtitle">Definir localização</AppText>
+              <Pressable onPress={() => setWeatherModalVisible(false)}>
+                <X size={18} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            <Input
+              label="Cidade ou bairro"
+              value={manualLocation}
+              onChangeText={setManualLocation}
+              placeholder="Ex.: São Paulo"
+            />
+            <Button label="Buscar clima" onPress={applyManualLocation} />
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} />
@@ -397,6 +602,61 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  weatherCard: {
+    gap: spacing.md,
+  },
+  weatherRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  weatherInfo: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  weatherHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  weatherLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  weatherIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.lg,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weatherCondition: {
+    fontWeight: '600',
+  },
+  insightsBox: {
+    gap: spacing.sm,
+  },
+  insightRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'flex-start',
+  },
+  insightDot: {
+    width: 6,
+    height: 6,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary,
+    marginTop: 6,
+  },
+  insightText: {
+    flex: 1,
+  },
+  refreshWeather: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
   },
   calendarCard: {
     gap: spacing.md,
