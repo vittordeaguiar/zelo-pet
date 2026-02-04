@@ -24,7 +24,7 @@ import {
 import { petsRepo, tutorsRepo, vaccinesRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing } from '@/theme';
-import { AppText, Button, Card, IconButton, Input } from '@/ui';
+import { AppText, Button, Card, IconButton, Input, useScreenPadding } from '@/ui';
 
 const formatDate = (date?: string | null) => {
   if (!date) return '-';
@@ -45,6 +45,7 @@ type VaccineForm = {
 export default function ProfileScreen() {
   const activePetId = useActivePetStore((state) => state.activePetId);
   const setActivePetId = useActivePetStore((state) => state.setActivePetId);
+  const screenPadding = useScreenPadding();
   const [pet, setPet] = useState<petsRepo.Pet | null>(null);
   const [tutors, setTutors] = useState<tutorsRepo.Tutor[]>([]);
   const [vaccines, setVaccines] = useState<vaccinesRepo.VaccineRecord[]>([]);
@@ -203,7 +204,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, screenPadding]} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <AppText variant="title">Perfil do Pet</AppText>
           <IconButton icon={<Settings size={18} color={colors.textSecondary} />} onPress={() => {}} />
@@ -445,9 +446,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
     gap: spacing.lg,
-    paddingBottom: spacing['2xl'],
   },
   emptyState: {
     flex: 1,

@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { colors, spacing } from '@/theme';
-import { AppText, Button, Card, Input } from '@/ui';
+import { AppText, Button, Card, Input, useScreenPadding } from '@/ui';
 
 export default function ExploreScreen() {
   const [query, setQuery] = useState('');
   const [count, setCount] = useState(0);
+  const screenPadding = useScreenPadding();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, screenPadding]}>
       <AppText variant="title">Explorar</AppText>
       <AppText variant="body" color={colors.textSecondary}>
         Busca e filtros para serviços próximos.
@@ -28,8 +29,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.xl,
     gap: spacing.md,
+    paddingHorizontal: spacing.xl,
   },
   card: {
     gap: spacing.md,

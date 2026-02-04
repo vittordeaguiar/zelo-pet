@@ -22,7 +22,7 @@ import {
 import { memoriesRepo, petsRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing, typography } from '@/theme';
-import { AppText, Button, IconButton, Input } from '@/ui';
+import { AppText, Button, IconButton, Input, useScreenPadding } from '@/ui';
 
 const formatDate = (date?: string | null) => {
   if (!date) return '-';
@@ -49,6 +49,7 @@ type MemoryForm = {
 export default function MemoriesScreen() {
   const activePetId = useActivePetStore((state) => state.activePetId);
   const setActivePetId = useActivePetStore((state) => state.setActivePetId);
+  const screenPadding = useScreenPadding();
   const [pets, setPets] = useState<petsRepo.Pet[]>([]);
   const [memories, setMemories] = useState<memoriesRepo.Memory[]>([]);
   const [selectedMemory, setSelectedMemory] = useState<memoriesRepo.Memory | null>(null);
@@ -151,7 +152,7 @@ export default function MemoriesScreen() {
         data={memories}
         keyExtractor={(item) => item.id}
         numColumns={2}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, screenPadding]}
         columnWrapperStyle={memories.length > 0 ? styles.columnWrap : undefined}
         ListHeaderComponent={
           <View style={styles.header}>
@@ -304,8 +305,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   listContent: {
-    padding: spacing.xl,
-    paddingBottom: spacing['2xl'],
+    paddingHorizontal: spacing.xl,
     gap: spacing.lg,
   },
   columnWrap: {

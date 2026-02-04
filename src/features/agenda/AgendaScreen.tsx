@@ -19,7 +19,7 @@ import {
 import { remindersRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing } from '@/theme';
-import { AppText, Button, Card, IconButton, Input } from '@/ui';
+import { AppText, Button, Card, IconButton, Input, useScreenPadding } from '@/ui';
 
 const dayLabels = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const reminderTypes = [
@@ -102,6 +102,7 @@ export default function AgendaScreen() {
   });
 
   const activePetId = useActivePetStore((state) => state.activePetId);
+  const screenPadding = useScreenPadding();
 
   const dateKey = useMemo(() => formatDateKey(selectedDate), [selectedDate]);
   const monthDays = useMemo(() => getDaysForMonth(currentMonth), [currentMonth]);
@@ -197,7 +198,7 @@ export default function AgendaScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, screenPadding]} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
             <AppText variant="title">Agenda</AppText>
@@ -230,8 +231,13 @@ export default function AgendaScreen() {
           </View>
 
           <View style={styles.weekRow}>
-            {dayLabels.map((label) => (
-              <AppText key={label} variant="caption" color={colors.textSecondary} style={styles.weekLabel}>
+            {dayLabels.map((label, index) => (
+              <AppText
+                key={`${label}-${index}`}
+                variant="caption"
+                color={colors.textSecondary}
+                style={styles.weekLabel}
+              >
                 {label}
               </AppText>
             ))}
@@ -384,9 +390,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
     gap: spacing.lg,
-    paddingBottom: spacing['2xl'],
   },
   header: {
     flexDirection: 'row',

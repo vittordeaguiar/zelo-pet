@@ -25,7 +25,7 @@ import {
 import { activitiesRepo, petsRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing, typography } from '@/theme';
-import { AppText, Button, Card, IconButton, Input } from '@/ui';
+import { AppText, Button, Card, IconButton, Input, useScreenPadding } from '@/ui';
 
 const DEFAULT_TEMPLATES = [
   { title: 'Alimentar', icon: 'bone', targetCountPerDay: 2, isTimer: false, sortOrder: 1 },
@@ -93,6 +93,7 @@ export default function HomeScreen() {
 
   const activePetId = useActivePetStore((state) => state.activePetId);
   const setActivePetId = useActivePetStore((state) => state.setActivePetId);
+  const screenPadding = useScreenPadding();
 
   const activePet = pets.find((pet) => pet.id === activePetId) ?? pets[0];
   const dateKey = useMemo(() => formatDateKey(selectedDate), [selectedDate]);
@@ -356,7 +357,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, screenPadding]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
@@ -521,8 +522,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    padding: spacing.xl,
-    paddingBottom: spacing['2xl'],
+    paddingHorizontal: spacing.xl,
     gap: spacing.lg,
   },
   header: {
