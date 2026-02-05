@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Modal,
   Pressable,
@@ -29,16 +30,12 @@ import DraggableFlatList, {
 import { Vibration } from 'react-native';
 
 import { activitiesRepo, petsRepo, tutorsRepo } from '@/data/repositories';
+import { loadLocationPreference } from '@/features/agenda/weather';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing, typography } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, useScreenPadding } from '@/ui';
-
-const DEFAULT_TEMPLATES = [
-  { title: 'Alimentar', icon: 'bone', targetCountPerDay: 2, isTimer: false, sortOrder: 1 },
-  { title: 'Passear', icon: 'footprints', targetCountPerDay: 2, isTimer: true, sortOrder: 2 },
-  { title: 'Brincar', icon: 'play', targetCountPerDay: 1, isTimer: true, sortOrder: 3 },
-  { title: 'Trocar água', icon: 'droplets', targetCountPerDay: 3, isTimer: false, sortOrder: 4 },
-] as const;
+import { useThemeColors } from '@/theme';
+import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, useScreenPadding } from '@/ui';
+import { DEFAULT_ACTIVITY_TEMPLATES } from '@/features/home/activityDefaults';
 
 type Template = activitiesRepo.ActivityTemplate;
 
@@ -81,8 +78,10 @@ const getIcon = (name: string | null | undefined) => {
 export default function HomeScreen() {
   const [pets, setPets] = useState<petsRepo.Pet[]>([]);
   const [tutorName, setTutorName] = useState('');
+  const [locationLabel, setLocationLabel] = useState('Defina sua localização');
   const [templates, setTemplates] = useState<Template[]>([]);
   const [activityCounts, setActivityCounts] = useState<ActivityCounts>({});
+  const [loadingChecklist, setLoadingChecklist] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [petModalVisible, setPetModalVisible] = useState(false);
   const [activityModalVisible, setActivityModalVisible] = useState(false);
@@ -104,6 +103,7 @@ export default function HomeScreen() {
   const activePetId = useActivePetStore((state) => state.activePetId);
   const setActivePetId = useActivePetStore((state) => state.setActivePetId);
   const screenPadding = useScreenPadding();
+  const themeColors = useThemeColors();
 
   const activePet = pets.find((pet) => pet.id === activePetId) ?? pets[0];
   const dateKey = useMemo(() => formatDateKey(selectedDate), [selectedDate]);
@@ -146,7 +146,7 @@ export default function HomeScreen() {
     const current = await activitiesRepo.getTemplatesByPet(petId);
     if (current.length > 0) return current;
 
-    for (const template of DEFAULT_TEMPLATES) {
+    for (const template of DEFAULT_ACTIVITY_TEMPLATES) {
       await activitiesRepo.createTemplate({
         petId,
         title: template.title,
@@ -161,15 +161,20 @@ export default function HomeScreen() {
   };
 
   const loadChecklist = async (petId: string, date: string) => {
-    const templateList = await ensureDefaultTemplates(petId);
-    setTemplates(templateList);
+    setLoadingChecklist(true);
+    try {
+      const templateList = await ensureDefaultTemplates(petId);
+      setTemplates(templateList);
 
-    const logs = await activitiesRepo.getLogsByPetDate(petId, date);
-    const counts = logs.reduce<ActivityCounts>((acc, log) => {
-      acc[log.templateId] = (acc[log.templateId] ?? 0) + log.countIncrement;
-      return acc;
-    }, {});
-    setActivityCounts(counts);
+      const logs = await activitiesRepo.getLogsByPetDate(petId, date);
+      const counts = logs.reduce<ActivityCounts>((acc, log) => {
+        acc[log.templateId] = (acc[log.templateId] ?? 0) + log.countIncrement;
+        return acc;
+      }, {});
+      setActivityCounts(counts);
+    } finally {
+      setLoadingChecklist(false);
+    }
   };
 
   useEffect(() => {
@@ -180,6 +185,16 @@ export default function HomeScreen() {
       .then((data) => setTutorName(data[0]?.name ?? ''))
       .catch((error) => console.error('loadTutors', error));
   }, [activePetId, dateKey]);
+
+  useEffect(() => {
+    loadLocationPreference()
+      .then((stored) => {
+        if (stored?.label) {
+          setLocationLabel(stored.label);
+        }
+      })
+      .catch((error) => console.error('loadLocationPreference', error));
+  }, []);
 
   useEffect(() => {
     if (!timerState.running) {
@@ -337,8 +352,8 @@ export default function HomeScreen() {
               {activePet?.breed ?? 'Toque para escolher'}
             </AppText>
           </View>
-          <View style={styles.petBadge}>
-            <AppText variant="caption" color={colors.primary}>
+          <View style={[styles.petBadge, { backgroundColor: themeColors.primarySoft }]}>
+            <AppText variant="caption" color={themeColors.primary}>
               Ativo
             </AppText>
           </View>
@@ -358,7 +373,7 @@ export default function HomeScreen() {
         </View>
         <View style={styles.checklistActions}>
           <Pressable onPress={() => setManageModalVisible(true)}>
-            <AppText variant="caption" color={colors.primary}>
+            <AppText variant="caption" color={themeColors.primary}>
               Gerenciar
             </AppText>
           </Pressable>
@@ -367,19 +382,35 @@ export default function HomeScreen() {
             variant="primary"
             onPress={() => setActivityModalVisible(true)}
             size={44}
-            style={styles.addButton}
+            style={[styles.addButton, { backgroundColor: themeColors.primary }]}
+            accessibilityLabel="Adicionar atividade"
           />
         </View>
       </View>
 
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+        <View
+          style={[
+            styles.progressFill,
+            { width: `${Math.round(progress * 100)}%`, backgroundColor: themeColors.primary },
+          ]}
+        />
       </View>
 
-      {templates.length === 0 ? (
-        <AppText variant="caption" color={colors.textSecondary}>
-          Nenhuma atividade cadastrada.
-        </AppText>
+      {loadingChecklist ? (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator />
+          <AppText variant="caption" color={colors.textSecondary}>
+            Carregando checklist...
+          </AppText>
+        </View>
+      ) : templates.length === 0 ? (
+        <View style={styles.emptyChecklist}>
+          <AppText variant="caption" color={colors.textSecondary}>
+            Nenhuma atividade cadastrada.
+          </AppText>
+          <Button label="Adicionar atividade" onPress={() => setActivityModalVisible(true)} />
+        </View>
       ) : (
         templates.map((template) => {
           const target = template.targetCountPerDay ?? 1;
@@ -389,9 +420,15 @@ export default function HomeScreen() {
 
           return (
             <View key={template.id} style={[styles.activityRow, done && styles.activityDone]}>
-              <View style={[styles.activityIcon, done && styles.activityIconDone]}>
-                <Icon size={18} color={done ? colors.primary : colors.textSecondary} />
-              </View>
+            <View
+              style={[
+                styles.activityIcon,
+                done && styles.activityIconDone,
+                done && { backgroundColor: themeColors.primarySoft },
+              ]}
+            >
+              <Icon size={18} color={done ? themeColors.primary : colors.textSecondary} />
+            </View>
               <View style={styles.activityInfo}>
                 <AppText variant="body" style={styles.activityTitle}>
                   {template.title}
@@ -407,7 +444,11 @@ export default function HomeScreen() {
                   </Pressable>
                 ) : null}
                 <Pressable
-                  style={[styles.actionButton, done && styles.actionButtonDone]}
+                  style={[
+                    styles.actionButton,
+                    { backgroundColor: themeColors.primary },
+                    done && styles.actionButtonDone,
+                  ]}
                   onPress={() =>
                     template.isTimer ? openTimer(template) : handleRegister(template.id)
                   }
@@ -441,13 +482,17 @@ export default function HomeScreen() {
             </AppText>
             <AppText variant="title">{tutorName || 'Olá'}</AppText>
             <View style={styles.locationRow}>
-              <MapPin size={12} color={colors.primary} />
+              <MapPin size={12} color={themeColors.primary} />
               <AppText variant="caption" color={colors.textSecondary}>
-                São Paulo, SP
+                {locationLabel}
               </AppText>
             </View>
           </View>
-          <IconButton icon={<Bell size={18} color={colors.textPrimary} />} onPress={() => {}} />
+          <IconButton
+            icon={<Bell size={18} color={colors.textPrimary} />}
+            onPress={() => {}}
+            accessibilityLabel="Notificações"
+          />
         </View>
 
         {renderPetCard()}
@@ -458,7 +503,10 @@ export default function HomeScreen() {
             return (
               <Pressable
                 key={date.toISOString()}
-                style={[styles.dayChip, selected && styles.dayChipSelected]}
+                style={[
+                  styles.dayChip,
+                  selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                ]}
                 onPress={() => setSelectedDate(date)}
               >
                 <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>
@@ -496,7 +544,7 @@ export default function HomeScreen() {
               >
                 <AppText variant="body">{pet.name}</AppText>
                 {pet.id === activePetId ? (
-                  <Check size={16} color={colors.primary} />
+                  <Check size={16} color={themeColors.primary} />
                 ) : null}
               </Pressable>
             ))}
@@ -511,7 +559,7 @@ export default function HomeScreen() {
 
       <Modal visible={activityModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContentLarge}>
+          <KeyboardAvoider style={styles.modalContentLarge}>
             <View style={styles.modalHeader}>
               <AppText variant="subtitle">
                 {editingTemplate ? 'Editar atividade' : 'Adicionar atividade'}
@@ -567,7 +615,10 @@ export default function HomeScreen() {
                   <Pressable
                     key={iconKey}
                     onPress={() => setNewActivityIcon(iconKey)}
-                    style={[styles.iconChip, selected && styles.iconChipSelected]}
+                    style={[
+                      styles.iconChip,
+                      selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                    ]}
                   >
                     <Icon size={18} color={selected ? '#fff' : colors.textSecondary} />
                   </Pressable>
@@ -579,7 +630,7 @@ export default function HomeScreen() {
               label={editingTemplate ? 'Salvar alterações' : 'Salvar atividade'}
               onPress={editingTemplate ? handleUpdateActivity : handleAddActivity}
             />
-          </View>
+          </KeyboardAvoider>
         </View>
       </Modal>
 
@@ -597,6 +648,8 @@ export default function HomeScreen() {
               data={templates}
               keyExtractor={(item) => item.id}
               onDragEnd={({ data }) => handleReorderTemplates(data)}
+              style={styles.manageListContainer}
+              contentContainerStyle={styles.manageList}
               renderItem={({ item, drag, isActive }: RenderItemParams<Template>) => (
                 <Pressable
                   onLongPress={() => {
@@ -762,6 +815,16 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     backgroundColor: colors.primary,
   },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  emptyChecklist: {
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -838,6 +901,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.xl,
     padding: spacing.lg,
     gap: spacing.md,
+    maxHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -883,6 +947,12 @@ const styles = StyleSheet.create({
   },
   manageRowActive: {
     backgroundColor: colors.primarySoft,
+  },
+  manageListContainer: {
+    flex: 1,
+  },
+  manageList: {
+    paddingBottom: spacing.sm,
   },
   manageInfo: {
     flex: 1,

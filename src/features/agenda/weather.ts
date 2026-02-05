@@ -97,6 +97,10 @@ export const saveCachedWeather = async (data: WeatherData) => {
   await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data));
 };
 
+export const clearCachedWeather = async () => {
+  await AsyncStorage.removeItem(CACHE_KEY);
+};
+
 export const saveLocationPreference = async (
   latitude: number,
   longitude: number,
@@ -106,6 +110,10 @@ export const saveLocationPreference = async (
     LOCATION_KEY,
     JSON.stringify({ latitude, longitude, label }),
   );
+};
+
+export const clearLocationPreference = async () => {
+  await AsyncStorage.removeItem(LOCATION_KEY);
 };
 
 export const loadLocationPreference = async (): Promise<

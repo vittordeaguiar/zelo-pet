@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import {
+  Alert,
+  ActionSheetIOS,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { Camera } from 'lucide-react-native';
 
 import { petsRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing, typography } from '@/theme';
-import { AppText, Button, Input } from '@/ui';
+import { AppText, Button, Input, isValidDateString, launchCamera, launchImageLibrary, maskDate, maskNumber, parseLocalizedNumber } from '@/ui';
+import { useThemeColors } from '@/theme';
 
 type Props = {
   onComplete: () => void;
@@ -23,6 +26,7 @@ const sexOptions = ['Macho', 'Fêmea'];
 
 export default function OnboardingPetScreen({ onComplete }: Props) {
   const setActivePetId = useActivePetStore((state) => state.setActivePetId);
+  const themeColors = useThemeColors();
   const [name, setName] = useState('');
   const [species, setSpecies] = useState(speciesOptions[0]);
   const [breed, setBreed] = useState('');
@@ -34,28 +38,51 @@ export default function OnboardingPetScreen({ onComplete }: Props) {
   const [saving, setSaving] = useState(false);
 
   const pickImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-      allowsEditing: true,
-      aspect: [1, 1],
-    });
-
-    if (!result.canceled) {
-      setPhotoUri(result.assets[0]?.uri ?? null);
+    const uri = await launchImageLibrary({ aspect: [1, 1], allowsEditing: true, quality: 0.8 });
+    if (uri) {
+      setPhotoUri(uri);
     }
+  };
+
+  const takePhoto = async () => {
+    const uri = await launchCamera({ aspect: [1, 1], allowsEditing: true, quality: 0.8 });
+    if (uri) {
+      setPhotoUri(uri);
+    }
+  };
+
+  const openPhotoOptions = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancelar', 'Tirar foto', 'Escolher da galeria'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) takePhoto();
+          if (buttonIndex === 2) pickImage();
+        },
+      );
+      return;
+    }
+    Alert.alert('Adicionar foto', 'Escolha uma opção', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Tirar foto', onPress: takePhoto },
+      { text: 'Escolher da galeria', onPress: pickImage },
+    ]);
   };
 
   const handleSave = async () => {
     if (!name.trim()) return;
     if (saving) return;
+    if (birthDate && !isValidDateString(birthDate)) {
+      Alert.alert('Data inválida', 'Informe uma data válida no formato YYYY-MM-DD.');
+      return;
+    }
 
     setSaving(true);
     try {
-      const weight = weightKg.trim() ? Number.parseFloat(weightKg) : undefined;
+      const weight = weightKg.trim() ? parseLocalizedNumber(weightKg) : undefined;
       const pet = await petsRepo.createPet({
         name: name.trim(),
         species,
@@ -82,13 +109,13 @@ export default function OnboardingPetScreen({ onComplete }: Props) {
         </AppText>
       </View>
 
-      <Pressable style={styles.photoCard} onPress={pickImage}>
+      <Pressable style={styles.photoCard} onPress={openPhotoOptions}>
         {photoUri ? (
           <Image source={{ uri: photoUri }} style={styles.photo} />
         ) : (
-          <View style={styles.photoPlaceholder}>
-            <Camera size={32} color={colors.primary} />
-            <AppText variant="caption" color={colors.primary}>
+          <View style={[styles.photoPlaceholder, { backgroundColor: themeColors.primarySoft }]}>
+            <Camera size={32} color={themeColors.primary} />
+            <AppText variant="caption" color={themeColors.primary}>
               Adicionar foto
             </AppText>
           </View>
@@ -107,7 +134,10 @@ export default function OnboardingPetScreen({ onComplete }: Props) {
               <Pressable
                 key={option}
                 onPress={() => setSpecies(option)}
-                style={[styles.optionChip, species === option && styles.optionChipSelected]}
+                style={[
+                  styles.optionChip,
+                  species === option && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                ]}
               >
                 <AppText
                   variant="caption"
@@ -131,7 +161,10 @@ export default function OnboardingPetScreen({ onComplete }: Props) {
               <Pressable
                 key={option}
                 onPress={() => setSex(option)}
-                style={[styles.optionChip, sex === option && styles.optionChipSelected]}
+                style={[
+                  styles.optionChip,
+                  sex === option && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                ]}
               >
                 <AppText variant="caption" color={sex === option ? '#fff' : colors.textSecondary}>
                   {option}
@@ -144,13 +177,13 @@ export default function OnboardingPetScreen({ onComplete }: Props) {
         <Input
           label="Data de nascimento (YYYY-MM-DD)"
           value={birthDate}
-          onChangeText={setBirthDate}
+          onChangeText={(value) => setBirthDate(maskDate(value))}
           placeholder="2023-01-01"
         />
         <Input
           label="Peso (kg)"
           value={weightKg}
-          onChangeText={setWeightKg}
+          onChangeText={(value) => setWeightKg(maskNumber(value))}
           placeholder="Ex.: 12.5"
           keyboardType="numeric"
         />
@@ -167,7 +200,10 @@ export default function OnboardingPetScreen({ onComplete }: Props) {
                 <Pressable
                   key={label}
                   onPress={() => setNeutered(value)}
-                  style={[styles.optionChip, selected && styles.optionChipSelected]}
+                  style={[
+                    styles.optionChip,
+                    selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                  ]}
                 >
                   <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>
                     {label}

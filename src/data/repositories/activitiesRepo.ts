@@ -112,6 +112,11 @@ export async function deleteTemplate(id: string): Promise<void> {
   await db.runAsync('DELETE FROM ActivityTemplate WHERE id = ?;', [id]);
 }
 
+export async function deleteTemplatesByPet(petId: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync('DELETE FROM ActivityTemplate WHERE petId = ?;', [petId]);
+}
+
 export async function logActivity(input: ActivityLogCreateInput): Promise<ActivityLog> {
   const data = activityLogCreateSchema.parse(input);
   const db = await getDb();

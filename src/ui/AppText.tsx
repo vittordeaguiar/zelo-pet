@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, TextProps } from 'react-native';
 
-import { colors, typography } from '@/theme';
+import { typography } from '@/theme';
+import { useThemeColors } from '@/theme';
 
 type Variant = 'title' | 'subtitle' | 'body' | 'caption';
 
@@ -10,8 +11,9 @@ type AppTextProps = TextProps & {
   color?: string;
 };
 
-export function AppText({ variant = 'body', color = colors.textPrimary, style, ...rest }: AppTextProps) {
-  return <Text {...rest} style={[styles.base, styles[variant], { color }, style]} />;
+export function AppText({ variant = 'body', color, style, ...rest }: AppTextProps) {
+  const colors = useThemeColors();
+  return <Text {...rest} style={[styles.base, styles[variant], { color: color ?? colors.textPrimary }, style]} />;
 }
 
 const styles = StyleSheet.create({

@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleProp, StyleSheet, ViewStyle } from 'react-native';
 
 import { colors, radii, spacing, typography } from '@/theme';
+import { useThemeColors } from '@/theme';
 import { AppText } from '@/ui/AppText';
 
 type Variant = 'primary' | 'secondary';
@@ -24,6 +25,7 @@ export function Button({
   disabled = false,
   style,
 }: ButtonProps) {
+  const colors = useThemeColors();
   return (
     <Pressable
       onPress={onPress}
@@ -31,6 +33,7 @@ export function Button({
       style={({ pressed }) => [
         styles.base,
         styles[variant],
+        variant === 'primary' && { backgroundColor: colors.primary },
         styles[size],
         pressed && styles.pressed,
         disabled && styles.disabled,
@@ -56,7 +59,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   primary: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#000000',
   },
   secondary: {
     backgroundColor: colors.surface,

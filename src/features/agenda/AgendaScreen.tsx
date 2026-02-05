@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -30,7 +31,8 @@ import * as Location from 'expo-location';
 import { remindersRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, useScreenPadding } from '@/ui';
+import { useThemeColors } from '@/theme';
+import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, isValidDateString, maskDate, maskTime, useScreenPadding } from '@/ui';
 import {
   buildInsights,
   fetchWeather,
@@ -112,6 +114,7 @@ export default function AgendaScreen() {
   const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(today);
   const [reminders, setReminders] = useState<remindersRepo.Reminder[]>([]);
+  const [loadingReminders, setLoadingReminders] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [form, setForm] = useState<FormState>({
     title: '',
@@ -130,6 +133,7 @@ export default function AgendaScreen() {
 
   const activePetId = useActivePetStore((state) => state.activePetId);
   const screenPadding = useScreenPadding();
+  const themeColors = useThemeColors();
 
   const dateKey = useMemo(() => formatDateKey(selectedDate), [selectedDate]);
   const monthDays = useMemo(() => getDaysForMonth(currentMonth), [currentMonth]);
@@ -141,12 +145,17 @@ export default function AgendaScreen() {
   const insights = weather ? buildInsights(weather) : null;
 
   const loadReminders = async () => {
-    if (!activePetId) {
-      setReminders([]);
-      return;
+    setLoadingReminders(true);
+    try {
+      if (!activePetId) {
+        setReminders([]);
+        return;
+      }
+      const data = await remindersRepo.getRemindersByPet(activePetId);
+      setReminders(data);
+    } finally {
+      setLoadingReminders(false);
     }
-    const data = await remindersRepo.getRemindersByPet(activePetId);
-    setReminders(data);
   };
 
   const refreshWeather = async () => {
@@ -269,6 +278,10 @@ export default function AgendaScreen() {
 
   const saveReminder = async () => {
     if (!activePetId || !form.title.trim()) return;
+    if (!isValidDateString(form.date)) {
+      Alert.alert('Data inválida', 'Informe uma data válida no formato YYYY-MM-DD.');
+      return;
+    }
 
     const datetime = buildDateTime(form.date, form.time);
 
@@ -299,15 +312,15 @@ export default function AgendaScreen() {
   };
 
   const renderWeatherIcon = () => {
-    if (!weather) return <Cloud size={24} color={colors.primary} />;
+    if (!weather) return <Cloud size={24} color={themeColors.primary} />;
     const condition = weather.condition.toLowerCase();
-    if (condition.includes('tempestade')) return <CloudLightning size={24} color={colors.primary} />;
-    if (condition.includes('chuva forte')) return <CloudRain size={24} color={colors.primary} />;
-    if (condition.includes('chuva')) return <CloudDrizzle size={24} color={colors.primary} />;
-    if (condition.includes('neve')) return <CloudSnow size={24} color={colors.primary} />;
-    if (condition.includes('neblina')) return <CloudFog size={24} color={colors.primary} />;
-    if (condition.includes('nublado')) return <Cloud size={24} color={colors.primary} />;
-    return <Sun size={24} color={colors.primary} />;
+    if (condition.includes('tempestade')) return <CloudLightning size={24} color={themeColors.primary} />;
+    if (condition.includes('chuva forte')) return <CloudRain size={24} color={themeColors.primary} />;
+    if (condition.includes('chuva')) return <CloudDrizzle size={24} color={themeColors.primary} />;
+    if (condition.includes('neve')) return <CloudSnow size={24} color={themeColors.primary} />;
+    if (condition.includes('neblina')) return <CloudFog size={24} color={themeColors.primary} />;
+    if (condition.includes('nublado')) return <Cloud size={24} color={themeColors.primary} />;
+    return <Sun size={24} color={themeColors.primary} />;
   };
 
   const renderWeatherCard = () => {
@@ -354,13 +367,13 @@ export default function AgendaScreen() {
           <View>
             <AppText variant="subtitle">{Math.round(weather.temperature)}°</AppText>
             <View style={styles.weatherLocation}>
-              <MapPin size={12} color={colors.textSecondary} />
+              <MapPin size={12} color={themeColors.primary} />
               <AppText variant="caption" color={colors.textSecondary}>
                 {weather.locationLabel}
               </AppText>
             </View>
           </View>
-          <View style={styles.weatherIconWrap}>
+          <View style={[styles.weatherIconWrap, { backgroundColor: themeColors.primarySoft }]}>
             {renderWeatherIcon()}
           </View>
         </View>
@@ -385,7 +398,7 @@ export default function AgendaScreen() {
           <View style={styles.insightsBox}>
             {insights.lines.map((line, index) => (
               <View key={`${line}-${index}`} style={styles.insightRow}>
-                <View style={styles.insightDot} />
+                <View style={[styles.insightDot, { backgroundColor: themeColors.primary }]} />
                 <AppText variant="caption" color={colors.textSecondary} style={styles.insightText}>
                   {line}
                 </AppText>
@@ -401,7 +414,7 @@ export default function AgendaScreen() {
         ) : null}
 
         <Pressable style={styles.refreshWeather} onPress={refreshWeather}>
-          <AppText variant="caption" color={colors.primary}>
+          <AppText variant="caption" color={themeColors.primary}>
             Atualizar
           </AppText>
         </Pressable>
@@ -419,7 +432,12 @@ export default function AgendaScreen() {
               Lembretes do seu pet
             </AppText>
           </View>
-          <IconButton icon={<Plus size={18} color="white" />} onPress={openCreateModal} variant="primary" />
+          <IconButton
+            icon={<Plus size={18} color="white" />}
+            onPress={openCreateModal}
+            variant="primary"
+            accessibilityLabel="Adicionar lembrete"
+          />
         </View>
 
         {renderWeatherCard()}
@@ -437,9 +455,12 @@ export default function AgendaScreen() {
                 <ChevronRight size={18} color={colors.textSecondary} />
               </Pressable>
             </View>
-            <Pressable style={styles.todayButton} onPress={goToToday}>
-              <CalendarIcon size={14} color={colors.primary} />
-              <AppText variant="caption" color={colors.primary}>
+            <Pressable
+              style={[styles.todayButton, { backgroundColor: themeColors.primarySoft }]}
+              onPress={goToToday}
+            >
+              <CalendarIcon size={14} color={themeColors.primary} />
+              <AppText variant="caption" color={themeColors.primary}>
                 Hoje
               </AppText>
             </Pressable>
@@ -470,7 +491,7 @@ export default function AgendaScreen() {
                   key={key}
                   style={[
                     styles.dayCell,
-                    isSelected && styles.dayCellSelected,
+                    isSelected && { backgroundColor: themeColors.primary },
                     !isCurrentMonth && styles.dayCellOutside,
                   ]}
                   onPress={() => setSelectedDate(item.date)}
@@ -496,12 +517,20 @@ export default function AgendaScreen() {
             </AppText>
           </View>
 
-          {remindersForDay.length === 0 ? (
+          {loadingReminders ? (
+            <View style={styles.loadingState}>
+              <ActivityIndicator />
+              <AppText variant="caption" color={colors.textSecondary}>
+                Carregando lembretes...
+              </AppText>
+            </View>
+          ) : remindersForDay.length === 0 ? (
             <View style={styles.emptyState}>
               <AppText variant="body">Nenhum lembrete</AppText>
               <AppText variant="caption" color={colors.textSecondary}>
                 Adicione lembretes para esse dia.
               </AppText>
+              <Button label="Adicionar lembrete" onPress={openCreateModal} size="sm" />
             </View>
           ) : (
             remindersForDay.map((reminder) => (
@@ -536,7 +565,7 @@ export default function AgendaScreen() {
       <Modal visible={weatherModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setWeatherModalVisible(false)} />
-          <View style={styles.modalContent}>
+          <KeyboardAvoider style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <AppText variant="subtitle">Definir localização</AppText>
               <Pressable onPress={() => setWeatherModalVisible(false)}>
@@ -551,14 +580,14 @@ export default function AgendaScreen() {
               placeholder="Ex.: São Paulo"
             />
             <Button label="Buscar clima" onPress={applyManualLocation} />
-          </View>
+          </KeyboardAvoider>
         </View>
       </Modal>
 
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} />
-          <View style={styles.modalContent}>
+          <KeyboardAvoider style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <AppText variant="subtitle">{form.id ? 'Editar lembrete' : 'Novo lembrete'}</AppText>
               <Pressable onPress={() => setModalVisible(false)}>
@@ -594,13 +623,13 @@ export default function AgendaScreen() {
               <Input
                 label="Data (YYYY-MM-DD)"
                 value={form.date}
-                onChangeText={(value) => setForm((prev) => ({ ...prev, date: value }))}
+                onChangeText={(value) => setForm((prev) => ({ ...prev, date: maskDate(value) }))}
                 placeholder="2026-03-10"
               />
               <Input
                 label="Hora (HH:mm)"
                 value={form.time}
-                onChangeText={(value) => setForm((prev) => ({ ...prev, time: value }))}
+                onChangeText={(value) => setForm((prev) => ({ ...prev, time: maskTime(value) }))}
                 placeholder="09:00"
               />
             </View>
@@ -614,7 +643,7 @@ export default function AgendaScreen() {
             />
 
             <Button label={form.id ? 'Salvar alterações' : 'Criar lembrete'} onPress={saveReminder} />
-          </View>
+          </KeyboardAvoider>
         </View>
       </Modal>
     </View>
@@ -774,6 +803,11 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     gap: spacing.xs,
+  },
+  loadingState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   reminderRow: {
     flexDirection: 'row',

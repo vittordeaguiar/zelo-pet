@@ -27,6 +27,19 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Precisamos acessar sua galeria para adicionar fotos de pets e memórias.",
+          "cameraPermission": "Precisamos acessar sua câmera para tirar fotos dos pets e memórias."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Precisamos da sua localização para mostrar clima e serviços próximos."
+        }
+      ],
       "expo-sqlite"
     ]
   }

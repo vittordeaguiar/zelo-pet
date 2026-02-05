@@ -23,7 +23,8 @@ import {
 } from 'lucide-react-native';
 
 import { colors, radii, spacing, typography } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, useScreenPadding } from '@/ui';
+import { useThemeColors } from '@/theme';
+import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, useScreenPadding } from '@/ui';
 import { LatLng, PlacesResult, searchPlaces } from '@/features/explore/placesProvider';
 
 const CATEGORIES = [
@@ -131,14 +132,15 @@ const mapPlacesToResult = (
 
 export default function ExploreScreen() {
   const screenPadding = useScreenPadding();
+  const themeColors = useThemeColors();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [radius, setRadius] = useState(5);
   const [sortBy, setSortBy] = useState<'dist' | 'name'>('dist');
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [locationState, setLocationState] = useState<'unknown' | 'granted' | 'denied'>('unknown');
-  const [manualLocation, setManualLocation] = useState('São Paulo');
-  const [currentLocationLabel, setCurrentLocationLabel] = useState('São Paulo');
+  const [manualLocation, setManualLocation] = useState('');
+  const [currentLocationLabel, setCurrentLocationLabel] = useState('');
   const [coords, setCoords] = useState<LatLng | null>(null);
   const [loading, setLoading] = useState(false);
   const [places, setPlaces] = useState<ExplorePlace[]>([]);
@@ -190,7 +192,11 @@ export default function ExploreScreen() {
             radiusMeters: radius * 1000,
           }
         : undefined;
-      const query = coords ? textQuery : `${textQuery} em ${currentLocationLabel}`;
+      const query = coords
+        ? textQuery
+        : currentLocationLabel
+          ? `${textQuery} em ${currentLocationLabel}`
+          : textQuery;
 
       const results = await searchPlaces({
         query,
@@ -260,13 +266,17 @@ export default function ExploreScreen() {
           <View>
             <AppText variant="title">Explorar</AppText>
             <View style={styles.locationRow}>
-              <MapPin size={12} color={colors.primary} />
+              <MapPin size={12} color={themeColors.primary} />
               <AppText variant="caption" color={colors.textSecondary}>
                 {locationState === 'granted' ? currentLocationLabel : 'Sem localização'}
               </AppText>
             </View>
           </View>
-          <IconButton icon={<Filter size={18} color={colors.textPrimary} />} onPress={() => setFiltersVisible(true)} />
+          <IconButton
+            icon={<Filter size={18} color={colors.textPrimary} />}
+            onPress={() => setFiltersVisible(true)}
+            accessibilityLabel="Abrir filtros"
+          />
         </View>
 
         <View style={styles.searchWrapper}>
@@ -288,7 +298,10 @@ export default function ExploreScreen() {
               <Pressable
                 key={category.id}
                 onPress={() => setSelectedCategory(category.id)}
-                style={[styles.categoryChip, selected && styles.categoryChipSelected]}
+                style={[
+                  styles.categoryChip,
+                  selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                ]}
               >
                 {Icon ? (
                   <Icon size={16} color={selected ? '#fff' : colors.textSecondary} />
@@ -340,51 +353,60 @@ export default function ExploreScreen() {
           </View>
         ) : null}
 
-        {results.map((place) => (
-          <Card key={place.id} style={styles.placeCard}>
-            <View style={styles.placeHeader}>
-              <View style={styles.placeInfo}>
-                <AppText variant="body" style={styles.placeTitle}>
-                  {place.name}
-                </AppText>
-                <AppText variant="caption" color={colors.textSecondary}>
-                  {place.distanceKm !== undefined
-                    ? `${place.distanceKm.toFixed(1)} km • `
-                    : ''}
-                  {place.rating ? `${place.rating} ★` : 'Sem avaliação'}
-                  {place.reviews ? ` (${place.reviews})` : ''}
-                </AppText>
-                {place.address ? (
-                  <AppText variant="caption" color={colors.textSecondary}>
-                    {place.address}
+        {!loading && results.length === 0 ? (
+          <Card style={styles.emptyResultsCard}>
+            <AppText variant="body">Nenhum resultado</AppText>
+            <AppText variant="caption" color={colors.textSecondary}>
+              Ajuste filtros ou tente outra busca.
+            </AppText>
+          </Card>
+        ) : (
+          results.map((place) => (
+            <Card key={place.id} style={styles.placeCard}>
+              <View style={styles.placeHeader}>
+                <View style={styles.placeInfo}>
+                  <AppText variant="body" style={styles.placeTitle}>
+                    {place.name}
                   </AppText>
-                ) : null}
+                  <AppText variant="caption" color={colors.textSecondary}>
+                    {place.distanceKm !== undefined
+                      ? `${place.distanceKm.toFixed(1)} km • `
+                      : ''}
+                    {place.rating ? `${place.rating} ★` : 'Sem avaliação'}
+                    {place.reviews ? ` (${place.reviews})` : ''}
+                  </AppText>
+                  {place.address ? (
+                    <AppText variant="caption" color={colors.textSecondary}>
+                      {place.address}
+                    </AppText>
+                  ) : null}
+                </View>
+                <View style={[styles.placeBadge, { backgroundColor: themeColors.primarySoft }]}>
+                  <AppText variant="caption" color={themeColors.primary}>
+                    {place.categoryLabel ?? 'Serviço'}
+                  </AppText>
+                </View>
               </View>
-              <View style={styles.placeBadge}>
-                <AppText variant="caption" color={colors.primary}>
+              <View style={styles.placeFooter}>
+                <AppText variant="caption" color={colors.textSecondary}>
                   {place.categoryLabel ?? 'Serviço'}
                 </AppText>
+                <Pressable style={styles.directionsButton}>
+                  <Navigation size={14} color={themeColors.primary} />
+                  <AppText variant="caption" color={themeColors.primary}>
+                    Rotas
+                  </AppText>
+                </Pressable>
               </View>
-            </View>
-            <View style={styles.placeFooter}>
-              <AppText variant="caption" color={colors.textSecondary}>
-                {place.categoryLabel ?? 'Serviço'}
-              </AppText>
-              <Pressable style={styles.directionsButton}>
-                <Navigation size={14} color={colors.primary} />
-                <AppText variant="caption" color={colors.primary}>
-                  Rotas
-                </AppText>
-              </Pressable>
-            </View>
-          </Card>
-        ))}
+            </Card>
+          ))
+        )}
       </ScrollView>
 
       <Modal visible={filtersVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setFiltersVisible(false)} />
-          <View style={styles.modalContent}>
+          <KeyboardAvoider style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <AppText variant="subtitle">Filtros</AppText>
               <Pressable onPress={() => setFiltersVisible(false)}>
@@ -402,7 +424,10 @@ export default function ExploreScreen() {
                   <Pressable
                     key={`${option}-km`}
                     onPress={() => setRadius(option)}
-                    style={[styles.optionChip, selected && styles.optionChipSelected]}
+                    style={[
+                      styles.optionChip,
+                      selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                    ]}
                   >
                     <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>
                       {option} km
@@ -425,7 +450,10 @@ export default function ExploreScreen() {
                   <Pressable
                     key={option.id}
                     onPress={() => setSortBy(option.id as 'dist' | 'name')}
-                    style={[styles.optionChip, selected && styles.optionChipSelected]}
+                    style={[
+                      styles.optionChip,
+                      selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                    ]}
                   >
                     <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>
                       {option.label}
@@ -447,11 +475,11 @@ export default function ExploreScreen() {
                   placeholder="Cidade ou bairro"
                 />
                 <Pressable style={styles.applyButton} onPress={applyManualLocation}>
-                  <ChevronDown size={16} color={colors.primary} />
+                  <ChevronDown size={16} color={themeColors.primary} />
                 </Pressable>
               </View>
             </View>
-          </View>
+          </KeyboardAvoider>
         </View>
       </Modal>
     </View>
@@ -525,6 +553,9 @@ const styles = StyleSheet.create({
   },
   errorCard: {
     gap: spacing.sm,
+  },
+  emptyResultsCard: {
+    gap: spacing.xs,
   },
   sectionHeader: {
     flexDirection: 'row',

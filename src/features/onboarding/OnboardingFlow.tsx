@@ -1,18 +1,21 @@
 import React, { useMemo, useState } from 'react';
 import {
+  Alert,
+  ActionSheetIOS,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { Camera, Check, Plus } from 'lucide-react-native';
 
 import { petsRepo, tutorsRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing } from '@/theme';
-import { AppText, Button, Input, useScreenPadding } from '@/ui';
+import { AppText, Button, Input, KeyboardAvoider, isValidDateString, launchCamera, launchImageLibrary, maskDate, maskNumber, parseLocalizedNumber, useScreenPadding } from '@/ui';
+import { useThemeColors } from '@/theme';
 
 type Step = 'welcome' | 'tutor' | 'pet' | 'summary';
 
@@ -53,6 +56,7 @@ const createPetForm = (): PetForm => ({
 export default function OnboardingFlow({ onComplete }: Props) {
   const setActivePetId = useActivePetStore((state) => state.setActivePetId);
   const screenPadding = useScreenPadding({ withTabs: false });
+  const themeColors = useThemeColors();
 
   const [step, setStep] = useState<Step>('welcome');
   const [tutorProfile, setTutorProfile] = useState<TutorProfile>({
@@ -67,27 +71,50 @@ export default function OnboardingFlow({ onComplete }: Props) {
   const canSavePet = useMemo(() => petForm.name.trim().length > 0, [petForm]);
 
   const pickImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-      allowsEditing: true,
-      aspect: [1, 1],
-    });
-
-    if (!result.canceled) {
-      setPetForm((prev) => ({ ...prev, photoUri: result.assets[0]?.uri ?? null }));
+    const uri = await launchImageLibrary({ aspect: [1, 1], allowsEditing: true, quality: 0.8 });
+    if (uri) {
+      setPetForm((prev) => ({ ...prev, photoUri: uri }));
     }
+  };
+
+  const takePhoto = async () => {
+    const uri = await launchCamera({ aspect: [1, 1], allowsEditing: true, quality: 0.8 });
+    if (uri) {
+      setPetForm((prev) => ({ ...prev, photoUri: uri }));
+    }
+  };
+
+  const openPhotoOptions = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancelar', 'Tirar foto', 'Escolher da galeria'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) takePhoto();
+          if (buttonIndex === 2) pickImage();
+        },
+      );
+      return;
+    }
+    Alert.alert('Adicionar foto', 'Escolha uma opção', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Tirar foto', onPress: takePhoto },
+      { text: 'Escolher da galeria', onPress: pickImage },
+    ]);
   };
 
   const savePet = async () => {
     if (!canSavePet || saving) return;
+    if (petForm.birthDate && !isValidDateString(petForm.birthDate)) {
+      Alert.alert('Data inválida', 'Informe uma data válida no formato YYYY-MM-DD.');
+      return;
+    }
     setSaving(true);
 
     try {
-      const weight = petForm.weightKg.trim() ? Number.parseFloat(petForm.weightKg) : undefined;
+      const weight = petForm.weightKg.trim() ? parseLocalizedNumber(petForm.weightKg) : undefined;
       const pet = await petsRepo.createPet({
         name: petForm.name.trim(),
         species: petForm.species,
@@ -121,9 +148,9 @@ export default function OnboardingFlow({ onComplete }: Props) {
 
   const renderWelcome = () => (
     <View style={styles.centerBlock}>
-      <View style={styles.heroIcon}>
-        <Camera size={40} color={colors.primary} />
-      </View>
+        <View style={[styles.heroIcon, { backgroundColor: themeColors.primarySoft }]}>
+          <Camera size={40} color={themeColors.primary} />
+        </View>
       <AppText variant="title">Boas-vindas!</AppText>
       <AppText variant="body" color={colors.textSecondary} style={styles.centerText}>
         Vamos configurar seu perfil de tutor e cadastrar seu primeiro pet.
@@ -163,13 +190,13 @@ export default function OnboardingFlow({ onComplete }: Props) {
         Cadastre as informações principais do seu pet.
       </AppText>
 
-      <Pressable style={styles.photoCard} onPress={pickImage}>
+      <Pressable style={styles.photoCard} onPress={openPhotoOptions}>
         {petForm.photoUri ? (
           <Image source={{ uri: petForm.photoUri }} style={styles.photo} />
         ) : (
-          <View style={styles.photoPlaceholder}>
-            <Camera size={32} color={colors.primary} />
-            <AppText variant="caption" color={colors.primary}>
+          <View style={[styles.photoPlaceholder, { backgroundColor: themeColors.primarySoft }]}>
+            <Camera size={32} color={themeColors.primary} />
+            <AppText variant="caption" color={themeColors.primary}>
               Adicionar foto
             </AppText>
           </View>
@@ -184,11 +211,14 @@ export default function OnboardingFlow({ onComplete }: Props) {
         </AppText>
         <View style={styles.optionRow}>
           {speciesOptions.map((option) => (
-            <Pressable
-              key={option}
-              onPress={() => setPetForm((prev) => ({ ...prev, species: option }))}
-              style={[styles.optionChip, petForm.species === option && styles.optionChipSelected]}
-            >
+              <Pressable
+                key={option}
+                onPress={() => setPetForm((prev) => ({ ...prev, species: option }))}
+                style={[
+                  styles.optionChip,
+                  petForm.species === option && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                ]}
+              >
               <AppText
                 variant="caption"
                 color={petForm.species === option ? '#fff' : colors.textSecondary}
@@ -213,11 +243,14 @@ export default function OnboardingFlow({ onComplete }: Props) {
         </AppText>
         <View style={styles.optionRow}>
           {sexOptions.map((option) => (
-            <Pressable
-              key={option}
-              onPress={() => setPetForm((prev) => ({ ...prev, sex: option }))}
-              style={[styles.optionChip, petForm.sex === option && styles.optionChipSelected]}
-            >
+              <Pressable
+                key={option}
+                onPress={() => setPetForm((prev) => ({ ...prev, sex: option }))}
+                style={[
+                  styles.optionChip,
+                  petForm.sex === option && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                ]}
+              >
               <AppText
                 variant="caption"
                 color={petForm.sex === option ? '#fff' : colors.textSecondary}
@@ -232,13 +265,13 @@ export default function OnboardingFlow({ onComplete }: Props) {
       <Input
         label="Nascimento (YYYY-MM-DD)"
         value={petForm.birthDate}
-        onChangeText={(value) => setPetForm((prev) => ({ ...prev, birthDate: value }))}
+        onChangeText={(value) => setPetForm((prev) => ({ ...prev, birthDate: maskDate(value) }))}
         placeholder="2023-01-01"
       />
       <Input
         label="Peso (kg)"
         value={petForm.weightKg}
-        onChangeText={(value) => setPetForm((prev) => ({ ...prev, weightKg: value }))}
+        onChangeText={(value) => setPetForm((prev) => ({ ...prev, weightKg: maskNumber(value) }))}
         placeholder="Ex.: 12.5"
         keyboardType="numeric"
       />
@@ -255,7 +288,10 @@ export default function OnboardingFlow({ onComplete }: Props) {
               <Pressable
                 key={label}
                 onPress={() => setPetForm((prev) => ({ ...prev, neutered: value }))}
-                style={[styles.optionChip, selected && styles.optionChipSelected]}
+                style={[
+                  styles.optionChip,
+                  selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                ]}
               >
                 <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>
                   {label}
@@ -281,7 +317,7 @@ export default function OnboardingFlow({ onComplete }: Props) {
         {createdPets.map((pet) => (
           <View key={pet.id} style={styles.petItem}>
             <View style={styles.petAvatar}>
-              <Check size={16} color={colors.primary} />
+              <Check size={16} color={themeColors.primary} />
             </View>
             <View>
               <AppText variant="body" style={styles.petItemName}>
@@ -306,20 +342,33 @@ export default function OnboardingFlow({ onComplete }: Props) {
   );
 
   return (
-    <ScrollView contentContainerStyle={[styles.container, screenPadding]}>
-      {step === 'welcome' && renderWelcome()}
-      {step === 'tutor' && renderTutor()}
-      {step === 'pet' && renderPet()}
-      {step === 'summary' && renderSummary()}
-    </ScrollView>
+    <KeyboardAvoider style={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={[styles.container, screenPadding]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {step === 'welcome' && renderWelcome()}
+        {step === 'tutor' && renderTutor()}
+        {step === 'pet' && renderPet()}
+        {step === 'summary' && renderSummary()}
+      </ScrollView>
+    </KeyboardAvoider>
   );
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     paddingHorizontal: spacing.xl,
     gap: spacing.lg,
     backgroundColor: colors.background,
+    flexGrow: 1,
+    minHeight: '100%',
+    justifyContent: 'center',
   },
   centerBlock: {
     alignItems: 'center',

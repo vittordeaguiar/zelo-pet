@@ -59,3 +59,13 @@ src/
 ## Aliases
 
 - `@/` aponta para `src/`
+
+## Checklist de QA (rápido)
+
+1. Criar pet no onboarding e salvar.
+2. Checklist do dia: registrar e usar timer.
+3. Agenda: criar lembrete para hoje.
+4. Perfil: editar pet, adicionar tutor e vacina.
+5. Memórias: criar memória com foto.
+6. Explorar: buscar serviços e usar filtros.
+7. Configurações: exportar/importar backup e resetar app.

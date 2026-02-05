@@ -4,7 +4,7 @@ import { Calendar, Home, Image, Search, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TAB_BAR_HEIGHT } from '@/navigation/constants';
-import { colors } from '@/theme';
+import { colors, useThemeColors } from '@/theme';
 import AgendaScreen from '@/features/agenda/AgendaScreen';
 import ExploreScreen from '@/features/explore/ExploreScreen';
 import HomeScreen from '@/features/home/HomeScreen';
@@ -23,12 +23,13 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 
 export default function RootNavigator() {
   const insets = useSafeAreaInsets();
+  const themeColors = useThemeColors();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: themeColors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
           backgroundColor: colors.surface,

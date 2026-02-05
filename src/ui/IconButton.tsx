@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleProp, StyleSheet, ViewStyle } from 'react-native';
 
 import { colors, radii, spacing } from '@/theme';
+import { useThemeColors } from '@/theme';
 
 type Variant = 'primary' | 'ghost';
 
@@ -11,15 +12,27 @@ type IconButtonProps = {
   variant?: Variant;
   size?: number;
   style?: StyleProp<ViewStyle>;
+  accessibilityLabel?: string;
 };
 
-export function IconButton({ icon, onPress, variant = 'ghost', size = 44, style }: IconButtonProps) {
+export function IconButton({
+  icon,
+  onPress,
+  variant = 'ghost',
+  size = 44,
+  style,
+  accessibilityLabel,
+}: IconButtonProps) {
+  const colors = useThemeColors();
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       style={({ pressed }) => [
         styles.base,
         variant === 'primary' ? styles.primary : styles.ghost,
+        variant === 'primary' && { backgroundColor: colors.primary },
         { width: size, height: size },
         pressed && styles.pressed,
         style,
@@ -38,7 +51,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
   },
   primary: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#000000',
   },
   ghost: {
     backgroundColor: colors.surface,
