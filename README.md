@@ -69,17 +69,7 @@ O app usa SQLite e mantém tudo offline. Para popular com dados de exemplo:
 EXPO_PUBLIC_SEED_DB=true
 ```
 
-## Checklist de QA (rápido)
-
-1. Criar pet no onboarding e salvar.
-2. Checklist do dia: registrar e usar timer.
-3. Agenda: criar lembrete para hoje.
-4. Perfil: editar pet, adicionar tutor e vacina.
-5. Memórias: criar memória com foto.
-6. Explorar: buscar serviços e usar filtros.
-7. Configurações: exportar/importar backup e resetar app.
-
-## Roadmap (curto e direto)
+## Roadmap
 
 - Notificações push
 - Sincronização na nuvem
