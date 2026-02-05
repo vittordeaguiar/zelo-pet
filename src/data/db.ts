@@ -2,7 +2,7 @@ import * as SQLite from 'expo-sqlite';
 
 import { seedDatabase } from '@/data/seed';
 
-const DB_NAME = 'pets.db';
+const DB_NAME = 'zelo-pet.db';
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 

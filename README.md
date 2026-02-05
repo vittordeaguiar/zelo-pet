@@ -1,11 +1,23 @@
-# Pets App
+# Zelo Pet
 
-Aplicativo mobile para controle da rotina de pets (MVP + V1).
+App mobile para organizar a rotina do seu pet com checklist diário, agenda, vacinas e memórias. Funciona offline e é simples de usar.
 
-## Requisitos
+## O que dá para fazer
 
-- Node 18+
-- Expo Go (para rodar no dispositivo)
+- Criar e gerenciar vários pets
+- Checklist diário com progresso e timers
+- Agenda de lembretes (vacina, banho, vet, etc.)
+- Carteira de vacinação
+- Memórias com foto e texto
+- Explorar serviços próximos (com filtros)
+- Clima na agenda com insights rápidos
+
+## Stack
+
+- Expo + React Native + TypeScript
+- SQLite (offline-first)
+- Zustand (estado global)
+- Zod (validação)
 
 ## Como rodar
 
@@ -22,43 +34,40 @@ npm run android
 npm run web
 ```
 
-## Qualidade
+## Variáveis de ambiente
 
-```bash
-npm run lint
-npm run format
-npm run format:check
-```
-
-## Seed do banco local
-
-Para popular o SQLite com dados dummy (1 pet e dados básicos), defina:
+Crie um `.env` na raiz do projeto se precisar:
 
 ```
+EXPO_PUBLIC_GOOGLE_PLACES_API_KEY=chave_aqui
 EXPO_PUBLIC_SEED_DB=true
 ```
 
-Você pode colocar essa variável em um arquivo `.env` na raiz do projeto.
-
-## Estrutura inicial
+## Estrutura do projeto
 
 ```
 src/
-  app/            # Entry point do app (providers)
-  navigation/     # Navegação (tabs, stacks)
+  app/            # Entry do app (providers)
+  navigation/     # Tabs e rotas
   theme/          # Tokens (cores, espaçamentos, tipografia)
-  ui/             # Componentes base (AppText, Card, Button, IconButton, Input)
-  features/       # Estrutura por feature
+  ui/             # Componentes base (AppText, Button, Input, etc.)
+  data/           # SQLite, seed, migrations e repos
+  features/       # Telas e fluxos por feature
     home/
     agenda/
     memories/
     explore/
     profile/
+    onboarding/
 ```
 
-## Aliases
+## Banco local
 
-- `@/` aponta para `src/`
+O app usa SQLite e mantém tudo offline. Para popular com dados de exemplo:
+
+```
+EXPO_PUBLIC_SEED_DB=true
+```
 
 ## Checklist de QA (rápido)
 
@@ -69,3 +78,9 @@ src/
 5. Memórias: criar memória com foto.
 6. Explorar: buscar serviços e usar filtros.
 7. Configurações: exportar/importar backup e resetar app.
+
+## Roadmap (curto e direto)
+
+- Notificações push
+- Sincronização na nuvem
+- Compartilhamento com outros tutores
