@@ -372,7 +372,7 @@ export default function AgendaScreen() {
           <View>
             <AppText variant="subtitle">{Math.round(weather.temperature)}°</AppText>
             <View style={styles.weatherLocation}>
-              <MapPin size={12} color={themeColors.primary} />
+              <MapPin size={14} color={themeColors.primary} />
               <AppText variant="caption" color={colors.textSecondary}>
                 {weather.locationLabel}
               </AppText>

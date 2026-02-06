@@ -267,7 +267,7 @@ export default function ExploreScreen() {
           <View>
             <AppText variant="title">Explorar</AppText>
             <View style={styles.locationRow}>
-              <MapPin size={12} color={themeColors.primary} />
+              <MapPin size={14} color={themeColors.primary} />
               <AppText variant="caption" color={colors.textSecondary}>
                 {locationState === 'granted' ? currentLocationLabel : 'Localização não definida'}
               </AppText>
@@ -516,6 +516,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    minHeight: 44,
   },
   searchInput: {
     flex: 1,

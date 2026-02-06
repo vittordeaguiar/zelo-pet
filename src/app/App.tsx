@@ -5,6 +5,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { enableScreens } from 'react-native-screens';
+import { useFonts } from 'expo-font';
+import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
+import { Manrope_400Regular, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 
 import { initializeDatabase } from '@/data/db';
 import { petsRepo } from '@/data/repositories';
@@ -24,6 +27,12 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const needsOnboarding = useAppStore((state) => state.needsOnboarding);
   const setNeedsOnboarding = useAppStore((state) => state.setNeedsOnboarding);
+  const [fontsLoaded] = useFonts({
+    DMSerifDisplay_400Regular,
+    Manrope_400Regular,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -54,7 +63,7 @@ export default function App() {
     };
   }, [ready]);
 
-  if (!ready) {
+  if (!ready || !fontsLoaded) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color={colors.primary} />

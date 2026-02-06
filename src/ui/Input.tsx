@@ -39,6 +39,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    minHeight: 48,
     fontSize: typography.size.md,
     color: colors.textPrimary,
   },

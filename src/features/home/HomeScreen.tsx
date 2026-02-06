@@ -493,7 +493,7 @@ export default function HomeScreen() {
             </AppText>
             <AppText variant="title">{tutorName || 'Olá'}</AppText>
             <View style={styles.locationRow}>
-              <MapPin size={12} color={themeColors.primary} />
+              <MapPin size={14} color={themeColors.primary} />
               <AppText variant="caption" color={colors.textSecondary}>
                 {locationLabel}
               </AppText>

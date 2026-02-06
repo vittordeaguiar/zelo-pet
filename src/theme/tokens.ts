@@ -31,9 +31,10 @@ export const radii = {
 
 export const typography = {
   fontFamily: {
-    regular: 'System',
-    medium: 'System',
-    bold: 'System',
+    regular: 'Manrope_400Regular',
+    medium: 'Manrope_600SemiBold',
+    bold: 'Manrope_700Bold',
+    display: 'DMSerifDisplay_400Regular',
   },
   size: {
     xs: 12,

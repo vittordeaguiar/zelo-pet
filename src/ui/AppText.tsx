@@ -23,21 +23,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.size.xl,
     lineHeight: typography.lineHeight.xl,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.display,
   },
   subtitle: {
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.medium,
   },
   body: {
     fontSize: typography.size.md,
     lineHeight: typography.lineHeight.md,
-    fontWeight: '400',
+    fontFamily: typography.fontFamily.regular,
   },
   caption: {
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: '400',
+    fontFamily: typography.fontFamily.regular,
   },
 });
