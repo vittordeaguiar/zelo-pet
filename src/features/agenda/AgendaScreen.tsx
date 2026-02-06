@@ -32,13 +32,14 @@ import { remindersRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, isValidDateString, maskDate, maskTime, useScreenPadding, useToast } from '@/ui';
+import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, ScreenFade, isValidDateString, maskDate, maskTime, useScreenPadding, useToast } from '@/ui';
 import {
   buildInsights,
   fetchWeather,
   geocodeLocation,
   loadCachedWeather,
   loadLocationPreference,
+  resolveNetworkErrorMessage,
   saveLocationPreference,
   WeatherData,
 } from '@/features/agenda/weather';
@@ -184,7 +185,7 @@ export default function AgendaScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setLocationStatus('denied');
-        if (!cached) setWeatherError('Sem permissão de localização');
+        if (!cached) setWeatherError('Sem localização autorizada.');
         return;
       }
 
@@ -200,7 +201,7 @@ export default function AgendaScreen() {
       setWeather(latest);
       setLocationStatus('granted');
     } catch (error) {
-      setWeatherError('Não foi possível atualizar o clima.');
+      setWeatherError(resolveNetworkErrorMessage(error, 'Não consegui atualizar o clima.'));
     } finally {
       setWeatherLoading(false);
     }
@@ -212,7 +213,7 @@ export default function AgendaScreen() {
     try {
       const geo = await geocodeLocation(manualLocation.trim());
       if (!geo) {
-        setWeatherError('Não encontramos essa localização.');
+        setWeatherError('Não encontramos esse lugar.');
         return;
       }
       await saveLocationPreference(geo.latitude, geo.longitude, geo.label);
@@ -221,8 +222,8 @@ export default function AgendaScreen() {
       setLocationStatus('granted');
       setWeatherModalVisible(false);
       setManualLocation('');
-    } catch {
-      setWeatherError('Não foi possível atualizar o clima.');
+    } catch (error) {
+      setWeatherError(resolveNetworkErrorMessage(error, 'Não consegui atualizar o clima.'));
     } finally {
       setWeatherLoading(false);
     }
@@ -427,7 +428,7 @@ export default function AgendaScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScreenFade style={styles.container}>
       <ScrollView contentContainerStyle={[styles.content, screenPadding]} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
@@ -650,7 +651,7 @@ export default function AgendaScreen() {
           </KeyboardAvoider>
         </View>
       </Modal>
-    </View>
+    </ScreenFade>
   );
 }
 

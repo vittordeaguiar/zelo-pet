@@ -26,7 +26,7 @@ import { memoriesRepo, petsRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing, typography } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, IconButton, Input, KeyboardAvoider, isValidDateString, launchCamera, launchImageLibrary, maskDate, useScreenPadding, useToast } from '@/ui';
+import { AppText, Button, IconButton, Input, KeyboardAvoider, ScreenFade, isValidDateString, launchCamera, launchImageLibrary, maskDate, useScreenPadding, useToast } from '@/ui';
 
 const formatDate = (date?: string | null) => {
   if (!date) return '-';
@@ -173,7 +173,7 @@ export default function MemoriesScreen() {
       await loadMemories();
       toast.show('Memória salva', 'success');
     } catch {
-      toast.show('Não foi possível salvar', 'error');
+      toast.show('Não consegui salvar a memória', 'error');
     }
   };
 
@@ -200,7 +200,7 @@ export default function MemoriesScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <ScreenFade style={styles.container}>
       <FlatList
         data={memories}
         keyExtractor={(item) => item.id}
@@ -358,7 +358,7 @@ export default function MemoriesScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </ScreenFade>
   );
 }
 

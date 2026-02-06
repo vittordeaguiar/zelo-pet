@@ -36,7 +36,7 @@ import { useAppStore } from '@/state/appStore';
 import { ACCENT_OPTIONS, useThemeStore } from '@/state/themeStore';
 import { colors, radii, spacing } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, isValidDateString, launchCamera, launchImageLibrary, maskDate, maskNumber, parseLocalizedNumber, useScreenPadding, useToast } from '@/ui';
+import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, ScreenFade, isValidDateString, launchCamera, launchImageLibrary, maskDate, maskNumber, parseLocalizedNumber, useScreenPadding, useToast } from '@/ui';
 import {
   clearCachedWeather,
   clearLocationPreference,
@@ -368,12 +368,19 @@ export default function ProfileScreen() {
 
   const updateWeatherLocation = async () => {
     if (!manualWeatherLocation.trim()) return;
-    const geo = await geocodeLocation(manualWeatherLocation.trim());
-    if (!geo) return;
-    await saveLocationPreference(geo.latitude, geo.longitude, geo.label);
-    setWeatherLocation(geo.label);
-    setManualWeatherLocation('');
-    toast.show('Localização atualizada', 'success');
+    try {
+      const geo = await geocodeLocation(manualWeatherLocation.trim());
+      if (!geo) {
+        toast.show('Não encontrei esse lugar', 'info');
+        return;
+      }
+      await saveLocationPreference(geo.latitude, geo.longitude, geo.label);
+      setWeatherLocation(geo.label);
+      setManualWeatherLocation('');
+      toast.show('Localização atualizada', 'success');
+    } catch {
+      toast.show('Sem conexão no momento', 'error');
+    }
   };
 
   const clearWeatherCache = async () => {
@@ -522,7 +529,7 @@ export default function ProfileScreen() {
       <View style={styles.emptyState}>
         <AppText variant="title">Perfil</AppText>
         <AppText variant="body" color={colors.textSecondary}>
-          Nenhum pet ativo selecionado.
+          Nenhum pet ativo por aqui.
         </AppText>
         {loadingProfile ? <ActivityIndicator /> : null}
       </View>
@@ -530,7 +537,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScreenFade style={styles.container}>
       <ScrollView contentContainerStyle={[styles.content, screenPadding]} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <AppText variant="title">Perfil do Pet</AppText>
@@ -606,7 +613,7 @@ export default function ProfileScreen() {
 
           {tutors.length === 0 ? (
             <AppText variant="caption" color={colors.textSecondary}>
-              Sem tutores cadastrados ainda.
+              Sem tutores por aqui.
             </AppText>
           ) : (
             tutors.map((tutor) => (
@@ -641,7 +648,7 @@ export default function ProfileScreen() {
 
           {vaccines.length === 0 ? (
             <AppText variant="caption" color={colors.textSecondary}>
-              Ainda não há vacinas registradas.
+              Sem vacinas registradas.
             </AppText>
           ) : (
             vaccines.map((vaccine) => (
@@ -1122,7 +1129,7 @@ export default function ProfileScreen() {
           </KeyboardAvoider>
         </View>
       </Modal>
-    </View>
+    </ScreenFade>
   );
 }
 

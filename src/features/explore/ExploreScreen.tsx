@@ -24,8 +24,9 @@ import {
 
 import { colors, radii, spacing, typography } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, useScreenPadding } from '@/ui';
+import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, ScreenFade, useScreenPadding } from '@/ui';
 import { LatLng, PlacesResult, searchPlaces } from '@/features/explore/placesProvider';
+import { isNetworkError } from '@/data/network';
 
 const CATEGORIES = [
   { id: 'all', label: 'Todos', icon: null, query: 'serviços para pets' },
@@ -175,7 +176,7 @@ export default function ExploreScreen() {
   const fetchPlaces = async () => {
     if (!GOOGLE_PLACES_API_KEY) {
       setPlaces(fallbackResults);
-      setError('Configure EXPO_PUBLIC_GOOGLE_PLACES_API_KEY para usar resultados reais.');
+      setError('Configure a chave do Google Places para resultados reais.');
       return;
     }
 
@@ -216,7 +217,7 @@ export default function ExploreScreen() {
 
       setPlaces(mapped);
     } catch (err) {
-      setError('Não foi possível carregar resultados reais.');
+      setError(isNetworkError(err) ? 'Sem conexão no momento.' : 'Não consegui carregar resultados reais.');
       setPlaces(fallbackResults);
     } finally {
       setLoading(false);
@@ -260,7 +261,7 @@ export default function ExploreScreen() {
   const results = GOOGLE_PLACES_API_KEY ? places : fallbackResults;
 
   return (
-    <View style={styles.container}>
+    <ScreenFade style={styles.container}>
       <ScrollView contentContainerStyle={[styles.content, screenPadding]}>
         <View style={styles.header}>
           <View>
@@ -268,7 +269,7 @@ export default function ExploreScreen() {
             <View style={styles.locationRow}>
               <MapPin size={12} color={themeColors.primary} />
               <AppText variant="caption" color={colors.textSecondary}>
-                {locationState === 'granted' ? currentLocationLabel : 'Sem localização'}
+                {locationState === 'granted' ? currentLocationLabel : 'Localização não definida'}
               </AppText>
             </View>
           </View>
@@ -319,7 +320,7 @@ export default function ExploreScreen() {
             <View style={styles.noLocationRow}>
               <AlertCircle size={20} color={colors.danger} />
               <View style={styles.noLocationText}>
-                <AppText variant="body">Sem permissão de localização</AppText>
+                <AppText variant="body">Localização desativada</AppText>
                 <AppText variant="caption" color={colors.textSecondary}>
                   Ative o acesso ou defina manualmente para ver resultados próximos.
                 </AppText>
@@ -355,7 +356,7 @@ export default function ExploreScreen() {
 
         {!loading && results.length === 0 ? (
           <Card style={styles.emptyResultsCard}>
-            <AppText variant="body">Nenhum resultado</AppText>
+            <AppText variant="body">Nada por aqui</AppText>
             <AppText variant="caption" color={colors.textSecondary}>
               Ajuste filtros ou tente outra busca.
             </AppText>
@@ -482,7 +483,7 @@ export default function ExploreScreen() {
           </KeyboardAvoider>
         </View>
       </Modal>
-    </View>
+    </ScreenFade>
   );
 }
 

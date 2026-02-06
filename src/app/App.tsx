@@ -13,6 +13,8 @@ import RootNavigator from '@/navigation/RootNavigator';
 import { colors, spacing } from '@/theme';
 import { AppText, ToastProvider } from '@/ui';
 import { useAppStore } from '@/state/appStore';
+import { ErrorBoundary } from '@/app/ErrorBoundary';
+import { initErrorHandler } from '@/app/errorHandler';
 
 enableScreens();
 
@@ -25,6 +27,7 @@ export default function App() {
 
   useEffect(() => {
     let mounted = true;
+    initErrorHandler();
     initializeDatabase({ seed: shouldSeed })
       .then(() => {
         if (mounted) setReady(true);
@@ -66,7 +69,9 @@ export default function App() {
     return (
       <SafeAreaProvider>
         <ToastProvider>
-          <OnboardingFlow onComplete={() => setNeedsOnboarding(false)} />
+          <ErrorBoundary>
+            <OnboardingFlow onComplete={() => setNeedsOnboarding(false)} />
+          </ErrorBoundary>
         </ToastProvider>
       </SafeAreaProvider>
     );
@@ -78,7 +83,9 @@ export default function App() {
         <ToastProvider>
           <NavigationContainer>
             <StatusBar style="dark" />
-            <RootNavigator />
+            <ErrorBoundary>
+              <RootNavigator />
+            </ErrorBoundary>
           </NavigationContainer>
         </ToastProvider>
       </SafeAreaProvider>

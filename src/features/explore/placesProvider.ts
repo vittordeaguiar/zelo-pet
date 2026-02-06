@@ -26,6 +26,8 @@ type SearchParams = {
 
 const PLACES_ENDPOINT = 'https://places.googleapis.com/v1/places:searchText';
 
+import { fetchWithTimeout } from '@/data/network';
+
 export async function searchPlaces(params: SearchParams): Promise<PlacesResult[]> {
   const body: Record<string, unknown> = {
     textQuery: params.query,
@@ -45,7 +47,7 @@ export async function searchPlaces(params: SearchParams): Promise<PlacesResult[]
     };
   }
 
-  const response = await fetch(PLACES_ENDPOINT, {
+  const response = await fetchWithTimeout(PLACES_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

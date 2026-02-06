@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchWithTimeout, isNetworkError } from '@/data/network';
 
 export type WeatherData = {
   temperature: number;
@@ -135,7 +136,7 @@ export const fetchWeather = async (
   locationLabel: string,
 ): Promise<WeatherData> => {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
-  const response = await fetch(url);
+  const response = await fetchWithTimeout(url);
   if (!response.ok) {
     throw new Error('Weather request failed');
   }
@@ -177,7 +178,7 @@ export const geocodeLocation = async (query: string) => {
   const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
     query,
   )}&count=1&language=pt&format=json`;
-  const response = await fetch(url);
+  const response = await fetchWithTimeout(url);
   if (!response.ok) throw new Error('Geocoding failed');
   const data = (await response.json()) as {
     results?: Array<{ latitude: number; longitude: number; name: string; country?: string }>;
@@ -190,4 +191,11 @@ export const geocodeLocation = async (query: string) => {
     longitude: result.longitude,
     label: result.country ? `${result.name}, ${result.country}` : result.name,
   };
+};
+
+export const resolveNetworkErrorMessage = (error: unknown, fallback: string) => {
+  if (isNetworkError(error)) {
+    return error.message;
+  }
+  return fallback;
 };
