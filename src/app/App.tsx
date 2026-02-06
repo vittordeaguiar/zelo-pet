@@ -11,7 +11,7 @@ import { petsRepo } from '@/data/repositories';
 import OnboardingFlow from '@/features/onboarding/OnboardingFlow';
 import RootNavigator from '@/navigation/RootNavigator';
 import { colors, spacing } from '@/theme';
-import { AppText } from '@/ui';
+import { AppText, ToastProvider } from '@/ui';
 import { useAppStore } from '@/state/appStore';
 
 enableScreens();
@@ -65,7 +65,9 @@ export default function App() {
   if (needsOnboarding) {
     return (
       <SafeAreaProvider>
-        <OnboardingFlow onComplete={() => setNeedsOnboarding(false)} />
+        <ToastProvider>
+          <OnboardingFlow onComplete={() => setNeedsOnboarding(false)} />
+        </ToastProvider>
       </SafeAreaProvider>
     );
   }
@@ -73,10 +75,12 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.container}>
       <SafeAreaProvider>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <RootNavigator />
-        </NavigationContainer>
+        <ToastProvider>
+          <NavigationContainer>
+            <StatusBar style="dark" />
+            <RootNavigator />
+          </NavigationContainer>
+        </ToastProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -32,7 +32,7 @@ import { remindersRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, isValidDateString, maskDate, maskTime, useScreenPadding } from '@/ui';
+import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, isValidDateString, maskDate, maskTime, useScreenPadding, useToast } from '@/ui';
 import {
   buildInsights,
   fetchWeather,
@@ -134,6 +134,7 @@ export default function AgendaScreen() {
   const activePetId = useActivePetStore((state) => state.activePetId);
   const screenPadding = useScreenPadding();
   const themeColors = useThemeColors();
+  const toast = useToast();
 
   const dateKey = useMemo(() => formatDateKey(selectedDate), [selectedDate]);
   const monthDays = useMemo(() => getDaysForMonth(currentMonth), [currentMonth]);
@@ -292,6 +293,7 @@ export default function AgendaScreen() {
         datetime,
         notes: form.notes.trim() || undefined,
       });
+      toast.show('Lembrete atualizado', 'success');
     } else {
       await remindersRepo.createReminder({
         petId: activePetId,
@@ -300,6 +302,7 @@ export default function AgendaScreen() {
         datetime,
         notes: form.notes.trim() || undefined,
       });
+      toast.show('Lembrete criado', 'success');
     }
 
     setModalVisible(false);
@@ -309,6 +312,7 @@ export default function AgendaScreen() {
   const removeReminder = async (id: string) => {
     await remindersRepo.deleteReminder(id);
     await loadReminders();
+    toast.show('Lembrete removido', 'info');
   };
 
   const renderWeatherIcon = () => {
@@ -526,9 +530,9 @@ export default function AgendaScreen() {
             </View>
           ) : remindersForDay.length === 0 ? (
             <View style={styles.emptyState}>
-              <AppText variant="body">Nenhum lembrete</AppText>
+              <AppText variant="body">Sem lembretes por aqui</AppText>
               <AppText variant="caption" color={colors.textSecondary}>
-                Adicione lembretes para esse dia.
+                Que tal criar um agora?
               </AppText>
               <Button label="Adicionar lembrete" onPress={openCreateModal} size="sm" />
             </View>
@@ -829,8 +833,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   iconAction: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
@@ -838,8 +842,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconActionDanger: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,

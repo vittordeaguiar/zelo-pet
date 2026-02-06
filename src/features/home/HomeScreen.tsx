@@ -2,11 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  LayoutAnimation,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  UIManager,
   View,
 } from 'react-native';
 import {
@@ -34,7 +37,7 @@ import { loadLocationPreference } from '@/features/agenda/weather';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing, typography } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, useScreenPadding } from '@/ui';
+import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, ScreenFade, useScreenPadding, useToast } from '@/ui';
 import { DEFAULT_ACTIVITY_TEMPLATES } from '@/features/home/activityDefaults';
 
 type Template = activitiesRepo.ActivityTemplate;
@@ -78,7 +81,7 @@ const getIcon = (name: string | null | undefined) => {
 export default function HomeScreen() {
   const [pets, setPets] = useState<petsRepo.Pet[]>([]);
   const [tutorName, setTutorName] = useState('');
-  const [locationLabel, setLocationLabel] = useState('Defina sua localização');
+  const [locationLabel, setLocationLabel] = useState('Localização não definida');
   const [templates, setTemplates] = useState<Template[]>([]);
   const [activityCounts, setActivityCounts] = useState<ActivityCounts>({});
   const [loadingChecklist, setLoadingChecklist] = useState(false);
@@ -104,6 +107,7 @@ export default function HomeScreen() {
   const setActivePetId = useActivePetStore((state) => state.setActivePetId);
   const screenPadding = useScreenPadding();
   const themeColors = useThemeColors();
+  const toast = useToast();
 
   const activePet = pets.find((pet) => pet.id === activePetId) ?? pets[0];
   const dateKey = useMemo(() => formatDateKey(selectedDate), [selectedDate]);
@@ -130,6 +134,9 @@ export default function HomeScreen() {
   }, [templates, activityCounts]);
 
   useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
     petsRepo
       .getPets()
       .then((list) => setPets(list))
@@ -219,6 +226,7 @@ export default function HomeScreen() {
 
   const handleRegister = async (templateId: string) => {
     if (!activePetId) return;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     await activitiesRepo.logActivity({
       petId: activePetId,
       templateId,
@@ -280,6 +288,7 @@ export default function HomeScreen() {
     setActivityModalVisible(false);
 
     await loadChecklist(activePetId, dateKey);
+    toast.show('Atividade adicionada', 'success');
   };
 
   const openEditTemplate = (template: Template) => {
@@ -311,11 +320,13 @@ export default function HomeScreen() {
     setNewActivityIcon('bone');
     setActivityModalVisible(false);
     await loadChecklist(editingTemplate.petId, dateKey);
+    toast.show('Atividade atualizada', 'success');
   };
 
   const handleDeleteTemplate = async (template: Template) => {
     await activitiesRepo.deleteTemplate(template.id);
     await loadChecklist(template.petId, dateKey);
+    toast.show('Atividade removida', 'info');
   };
 
   const handleReorderTemplates = async (data: Template[]) => {
@@ -335,7 +346,7 @@ export default function HomeScreen() {
   };
 
   const renderPetCard = () => (
-    <Pressable onPress={() => setPetModalVisible(true)}>
+    <Pressable onPress={() => setPetModalVisible(true)} accessibilityRole="button" accessibilityLabel="Selecionar pet">
       <Card style={styles.petCard}>
         <View style={styles.petRow}>
           {activePet?.photoUri ? (
@@ -372,7 +383,7 @@ export default function HomeScreen() {
           </AppText>
         </View>
         <View style={styles.checklistActions}>
-          <Pressable onPress={() => setManageModalVisible(true)}>
+          <Pressable onPress={() => setManageModalVisible(true)} accessibilityRole="button" accessibilityLabel="Gerenciar checklist">
             <AppText variant="caption" color={themeColors.primary}>
               Gerenciar
             </AppText>
@@ -407,7 +418,7 @@ export default function HomeScreen() {
       ) : templates.length === 0 ? (
         <View style={styles.emptyChecklist}>
           <AppText variant="caption" color={colors.textSecondary}>
-            Nenhuma atividade cadastrada.
+            Sem atividades por aqui.
           </AppText>
           <Button label="Adicionar atividade" onPress={() => setActivityModalVisible(true)} />
         </View>
@@ -470,7 +481,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <ScreenFade style={styles.container}>
       <ScrollView
         contentContainerStyle={[styles.content, screenPadding]}
         showsVerticalScrollIndicator={false}
@@ -550,7 +561,7 @@ export default function HomeScreen() {
             ))}
             {pets.length === 0 ? (
               <AppText variant="caption" color={colors.textSecondary}>
-                Nenhum pet cadastrado.
+                Nenhum pet por aqui ainda.
               </AppText>
             ) : null}
           </View>
@@ -711,7 +722,7 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </ScreenFade>
   );
 }
 
@@ -963,8 +974,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   iconAction: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
@@ -972,8 +983,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconActionDanger: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,

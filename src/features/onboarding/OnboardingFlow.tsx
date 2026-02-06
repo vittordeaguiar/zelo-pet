@@ -190,7 +190,12 @@ export default function OnboardingFlow({ onComplete }: Props) {
         Cadastre as informações principais do seu pet.
       </AppText>
 
-      <Pressable style={styles.photoCard} onPress={openPhotoOptions}>
+      <Pressable
+        style={styles.photoCard}
+        onPress={openPhotoOptions}
+        accessibilityRole="button"
+        accessibilityLabel="Adicionar foto do pet"
+      >
         {petForm.photoUri ? (
           <Image source={{ uri: petForm.photoUri }} style={styles.photo} />
         ) : (

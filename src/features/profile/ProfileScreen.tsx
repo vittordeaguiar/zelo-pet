@@ -36,7 +36,7 @@ import { useAppStore } from '@/state/appStore';
 import { ACCENT_OPTIONS, useThemeStore } from '@/state/themeStore';
 import { colors, radii, spacing } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, isValidDateString, launchCamera, launchImageLibrary, maskDate, maskNumber, parseLocalizedNumber, useScreenPadding } from '@/ui';
+import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, isValidDateString, launchCamera, launchImageLibrary, maskDate, maskNumber, parseLocalizedNumber, useScreenPadding, useToast } from '@/ui';
 import {
   clearCachedWeather,
   clearLocationPreference,
@@ -70,6 +70,7 @@ export default function ProfileScreen() {
   const setAccentId = useThemeStore((state) => state.setAccentId);
   const themeColors = useThemeColors();
   const screenPadding = useScreenPadding();
+  const toast = useToast();
   const [pet, setPet] = useState<petsRepo.Pet | null>(null);
   const [pets, setPets] = useState<petsRepo.Pet[]>([]);
   const [tutors, setTutors] = useState<tutorsRepo.Tutor[]>([]);
@@ -285,6 +286,7 @@ export default function ProfileScreen() {
         neutered: petForm.neutered ?? undefined,
         photoUri: petForm.photoUri ?? undefined,
       });
+      toast.show('Pet atualizado', 'success');
     } else {
       const created = await petsRepo.createPet({
         name: petForm.name.trim(),
@@ -297,6 +299,7 @@ export default function ProfileScreen() {
         photoUri: petForm.photoUri ?? undefined,
       });
       setActivePetId(created.id);
+      toast.show('Pet cadastrado', 'success');
     }
 
     setPetFormVisible(false);
@@ -315,6 +318,7 @@ export default function ProfileScreen() {
       }
     }
     await loadData();
+    toast.show('Pet removido', 'info');
   };
 
   const openTutorProfile = () => {
@@ -343,6 +347,7 @@ export default function ProfileScreen() {
     }
     setTutorProfileVisible(false);
     await loadData();
+    toast.show('Tutor atualizado', 'success');
   };
 
   const resetDefaultActivities = async () => {
@@ -358,6 +363,7 @@ export default function ProfileScreen() {
         sortOrder: template.sortOrder,
       });
     }
+    toast.show('Checklist restaurado', 'success');
   };
 
   const updateWeatherLocation = async () => {
@@ -367,12 +373,14 @@ export default function ProfileScreen() {
     await saveLocationPreference(geo.latitude, geo.longitude, geo.label);
     setWeatherLocation(geo.label);
     setManualWeatherLocation('');
+    toast.show('Localização atualizada', 'success');
   };
 
   const clearWeatherCache = async () => {
     await clearCachedWeather();
     await clearLocationPreference();
     setWeatherLocation('Não definido');
+    toast.show('Cache do clima limpo', 'info');
   };
 
   const openCreateVaccine = () => {
@@ -419,11 +427,13 @@ export default function ProfileScreen() {
 
     if (vaccineForm.id) {
       await vaccinesRepo.updateVaccine(vaccineForm.id, payload);
+      toast.show('Vacina atualizada', 'success');
     } else {
       await vaccinesRepo.createVaccine({
         petId: activePetId,
         ...payload,
       });
+      toast.show('Vacina cadastrada', 'success');
     }
 
     setVaccineModalVisible(false);
@@ -433,6 +443,7 @@ export default function ProfileScreen() {
   const removeVaccine = async (id: string) => {
     await vaccinesRepo.deleteVaccine(id);
     await loadData();
+    toast.show('Vacina removida', 'info');
   };
 
   const handleResetApp = async () => {
@@ -493,8 +504,10 @@ export default function ProfileScreen() {
               setImportPayload('');
               setImportModalVisible(false);
               await loadData();
+              toast.show('Backup importado', 'success');
             } catch (error) {
               Alert.alert('Erro ao importar', 'Verifique se o conteúdo está correto.');
+              toast.show('Falha ao importar backup', 'error');
             } finally {
               setImportLoading(false);
             }
@@ -593,7 +606,7 @@ export default function ProfileScreen() {
 
           {tutors.length === 0 ? (
             <AppText variant="caption" color={colors.textSecondary}>
-              Nenhum tutor cadastrado.
+              Sem tutores cadastrados ainda.
             </AppText>
           ) : (
             tutors.map((tutor) => (
@@ -628,7 +641,7 @@ export default function ProfileScreen() {
 
           {vaccines.length === 0 ? (
             <AppText variant="caption" color={colors.textSecondary}>
-              Nenhuma vacina cadastrada.
+              Ainda não há vacinas registradas.
             </AppText>
           ) : (
             vaccines.map((vaccine) => (
@@ -975,7 +988,12 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
 
-            <Pressable style={styles.photoButton} onPress={openPetPhotoOptions}>
+            <Pressable
+              style={styles.photoButton}
+              onPress={openPetPhotoOptions}
+              accessibilityRole="button"
+              accessibilityLabel="Adicionar foto do pet"
+            >
               {petForm.photoUri ? (
                 <Image source={{ uri: petForm.photoUri }} style={styles.photoPreview} />
               ) : (
@@ -1249,8 +1267,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   iconAction: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
@@ -1258,8 +1276,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconActionDanger: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,

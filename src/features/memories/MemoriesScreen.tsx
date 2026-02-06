@@ -26,7 +26,7 @@ import { memoriesRepo, petsRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing, typography } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, IconButton, Input, KeyboardAvoider, isValidDateString, launchCamera, launchImageLibrary, maskDate, useScreenPadding } from '@/ui';
+import { AppText, Button, IconButton, Input, KeyboardAvoider, isValidDateString, launchCamera, launchImageLibrary, maskDate, useScreenPadding, useToast } from '@/ui';
 
 const formatDate = (date?: string | null) => {
   if (!date) return '-';
@@ -55,6 +55,7 @@ export default function MemoriesScreen() {
   const setActivePetId = useActivePetStore((state) => state.setActivePetId);
   const screenPadding = useScreenPadding();
   const themeColors = useThemeColors();
+  const toast = useToast();
   const [pets, setPets] = useState<petsRepo.Pet[]>([]);
   const [memories, setMemories] = useState<memoriesRepo.Memory[]>([]);
   const [loadingMemories, setLoadingMemories] = useState(true);
@@ -160,16 +161,20 @@ export default function MemoriesScreen() {
       return;
     }
 
-    await memoriesRepo.createMemory({
-      petId: activePetId,
-      title: form.title.trim() || undefined,
-      text: form.text.trim(),
-      memoryDate: form.memoryDate.trim(),
-      photoUri: form.photoUri ?? undefined,
-    });
-
-    setCreateModalVisible(false);
-    await loadMemories();
+    try {
+      await memoriesRepo.createMemory({
+        petId: activePetId,
+        title: form.title.trim() || undefined,
+        text: form.text.trim(),
+        memoryDate: form.memoryDate.trim(),
+        photoUri: form.photoUri ?? undefined,
+      });
+      setCreateModalVisible(false);
+      await loadMemories();
+      toast.show('Memória salva', 'success');
+    } catch {
+      toast.show('Não foi possível salvar', 'error');
+    }
   };
 
   const renderEmpty = () => (
@@ -177,7 +182,7 @@ export default function MemoriesScreen() {
         <View style={[styles.emptyIcon, { backgroundColor: themeColors.primarySoft }]}>
           <Camera size={44} color={themeColors.primary} />
         </View>
-      <AppText variant="subtitle">Crie memórias</AppText>
+      <AppText variant="subtitle">Guarde bons momentos</AppText>
       <AppText variant="caption" color={colors.textSecondary} style={styles.emptyText}>
         Registre os melhores momentos com o {activePet?.name ?? 'seu pet'}.
       </AppText>
@@ -301,7 +306,12 @@ export default function MemoriesScreen() {
               multiline
             />
 
-            <Pressable style={styles.photoPicker} onPress={openPhotoOptions}>
+            <Pressable
+              style={styles.photoPicker}
+              onPress={openPhotoOptions}
+              accessibilityRole="button"
+              accessibilityLabel="Adicionar foto da memória"
+            >
               <Camera size={18} color={themeColors.primary} />
               <AppText variant="caption" color={themeColors.primary}>
                 {form.photoUri ? 'Trocar foto' : 'Adicionar foto'}

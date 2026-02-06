@@ -109,7 +109,12 @@ export default function OnboardingPetScreen({ onComplete }: Props) {
         </AppText>
       </View>
 
-      <Pressable style={styles.photoCard} onPress={openPhotoOptions}>
+      <Pressable
+        style={styles.photoCard}
+        onPress={openPhotoOptions}
+        accessibilityRole="button"
+        accessibilityLabel="Adicionar foto do pet"
+      >
         {photoUri ? (
           <Image source={{ uri: photoUri }} style={styles.photo} />
         ) : (
