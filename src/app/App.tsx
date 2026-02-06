@@ -6,8 +6,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { enableScreens } from 'react-native-screens';
 import { useFonts } from 'expo-font';
-import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
-import { Manrope_400Regular, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
+import {
+  Nunito_400Regular,
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+} from '@expo-google-fonts/nunito';
 
 import { initializeDatabase } from '@/data/db';
 import { petsRepo } from '@/data/repositories';
@@ -28,10 +32,10 @@ export default function App() {
   const needsOnboarding = useAppStore((state) => state.needsOnboarding);
   const setNeedsOnboarding = useAppStore((state) => state.setNeedsOnboarding);
   const [fontsLoaded] = useFonts({
-    DMSerifDisplay_400Regular,
-    Manrope_400Regular,
-    Manrope_600SemiBold,
-    Manrope_700Bold,
+    Nunito_400Regular,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
   });
 
   useEffect(() => {

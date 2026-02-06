@@ -31,10 +31,10 @@ export const radii = {
 
 export const typography = {
   fontFamily: {
-    regular: 'Manrope_400Regular',
-    medium: 'Manrope_600SemiBold',
-    bold: 'Manrope_700Bold',
-    display: 'DMSerifDisplay_400Regular',
+    regular: 'Nunito_400Regular',
+    medium: 'Nunito_600SemiBold',
+    bold: 'Nunito_700Bold',
+    display: 'Nunito_800ExtraBold',
   },
   size: {
     xs: 12,

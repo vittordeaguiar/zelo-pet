@@ -4,12 +4,14 @@ import {
   ActivityIndicator,
   ActionSheetIOS,
   Image,
+  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   Share,
   StyleSheet,
+  UIManager,
   View,
 } from 'react-native';
 import {
@@ -129,6 +131,10 @@ export default function ProfileScreen() {
         vaccinesRepo.getVaccinesByPet(activePetId),
       ]);
 
+      if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+      }
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setPet(petData);
       setPets(petsData);
       setTutors(tutorData);

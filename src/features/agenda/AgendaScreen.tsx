@@ -2,10 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  LayoutAnimation,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  UIManager,
   View,
 } from 'react-native';
 import {
@@ -32,7 +35,7 @@ import { remindersRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, ScreenFade, isValidDateString, maskDate, maskTime, useScreenPadding, useToast } from '@/ui';
+import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, PressableScale, ScreenFade, isValidDateString, maskDate, maskTime, useScreenPadding, useToast } from '@/ui';
 import {
   buildInsights,
   fetchWeather,
@@ -154,6 +157,10 @@ export default function AgendaScreen() {
         return;
       }
       const data = await remindersRepo.getRemindersByPet(activePetId);
+      if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+      }
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setReminders(data);
     } finally {
       setLoadingReminders(false);
@@ -492,7 +499,7 @@ export default function AgendaScreen() {
               const isCurrentMonth = item.currentMonth;
 
               return (
-                <Pressable
+                <PressableScale
                   key={key}
                   style={[
                     styles.dayCell,
@@ -508,7 +515,7 @@ export default function AgendaScreen() {
                   >
                     {item.date.getDate()}
                   </AppText>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </View>

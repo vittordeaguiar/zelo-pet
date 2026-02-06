@@ -37,7 +37,7 @@ import { loadLocationPreference } from '@/features/agenda/weather';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing, typography } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, ScreenFade, useScreenPadding, useToast } from '@/ui';
+import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, PressableScale, ScreenFade, useScreenPadding, useToast } from '@/ui';
 import { DEFAULT_ACTIVITY_TEMPLATES } from '@/features/home/activityDefaults';
 
 type Template = activitiesRepo.ActivityTemplate;
@@ -346,7 +346,7 @@ export default function HomeScreen() {
   };
 
   const renderPetCard = () => (
-    <Pressable onPress={() => setPetModalVisible(true)} accessibilityRole="button" accessibilityLabel="Selecionar pet">
+    <PressableScale onPress={() => setPetModalVisible(true)} accessibilityRole="button" accessibilityLabel="Selecionar pet">
       <Card style={styles.petCard}>
         <View style={styles.petRow}>
           {activePet?.photoUri ? (
@@ -370,7 +370,7 @@ export default function HomeScreen() {
           </View>
         </View>
       </Card>
-    </Pressable>
+    </PressableScale>
   );
 
   const renderChecklist = () => (
@@ -512,7 +512,7 @@ export default function HomeScreen() {
           {weekDates.map((date) => {
             const selected = formatDateKey(date) === dateKey;
             return (
-              <Pressable
+              <PressableScale
                 key={date.toISOString()}
                 style={[
                   styles.dayChip,
@@ -526,7 +526,7 @@ export default function HomeScreen() {
                 <AppText variant="body" color={selected ? '#fff' : colors.textPrimary}>
                   {date.getDate()}
                 </AppText>
-              </Pressable>
+              </PressableScale>
             );
           })}
         </View>

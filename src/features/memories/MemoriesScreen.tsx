@@ -5,11 +5,13 @@ import {
   ActionSheetIOS,
   FlatList,
   Image,
+  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  UIManager,
   View,
 } from 'react-native';
 import {
@@ -26,7 +28,7 @@ import { memoriesRepo, petsRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing, typography } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, IconButton, Input, KeyboardAvoider, ScreenFade, isValidDateString, launchCamera, launchImageLibrary, maskDate, useScreenPadding, useToast } from '@/ui';
+import { AppText, Button, IconButton, Input, KeyboardAvoider, PressableScale, ScreenFade, isValidDateString, launchCamera, launchImageLibrary, maskDate, useScreenPadding, useToast } from '@/ui';
 
 const formatDate = (date?: string | null) => {
   if (!date) return '-';
@@ -74,12 +76,13 @@ export default function MemoriesScreen() {
     () => pets.find((pet) => pet.id === activePetId) ?? pets[0],
     [pets, activePetId],
   );
+  const resolvedPetId = activePet?.id ?? activePetId ?? null;
 
   const loadPets = async () => {
     try {
       const data = await petsRepo.getPets();
       setPets(data);
-      if (!activePetId && data[0]) {
+      if (data[0] && (!activePetId || !data.find((pet) => pet.id === activePetId))) {
         setActivePetId(data[0].id);
       }
     } finally {
@@ -90,11 +93,11 @@ export default function MemoriesScreen() {
   const loadMemories = async () => {
     setLoadingMemories(true);
     try {
-      if (!activePetId) {
+      if (!resolvedPetId) {
         setMemories([]);
         return;
       }
-      const data = await memoriesRepo.getMemoriesByPet(activePetId);
+      const data = await memoriesRepo.getMemoriesByPet(resolvedPetId);
       setMemories(data);
     } finally {
       setLoadingMemories(false);
@@ -107,7 +110,7 @@ export default function MemoriesScreen() {
 
   useEffect(() => {
     loadMemories().catch((error) => console.error('loadMemories', error));
-  }, [activePetId]);
+  }, [activePetId, resolvedPetId]);
 
   const openCreateModal = () => {
     setForm({
@@ -155,7 +158,14 @@ export default function MemoriesScreen() {
   };
 
   const saveMemory = async () => {
-    if (!activePetId || !form.text.trim()) return;
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+    if (!resolvedPetId) {
+      toast.show('Cadastre um pet primeiro', 'info');
+      return;
+    }
+    if (!form.text.trim()) return;
     if (!isValidDateString(form.memoryDate)) {
       Alert.alert('Data inválida', 'Informe uma data válida no formato YYYY-MM-DD.');
       return;
@@ -163,12 +173,13 @@ export default function MemoriesScreen() {
 
     try {
       await memoriesRepo.createMemory({
-        petId: activePetId,
+        petId: resolvedPetId,
         title: form.title.trim() || undefined,
         text: form.text.trim(),
         memoryDate: form.memoryDate.trim(),
         photoUri: form.photoUri ?? undefined,
       });
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setCreateModalVisible(false);
       await loadMemories();
       toast.show('Memória salva', 'success');
@@ -228,7 +239,7 @@ export default function MemoriesScreen() {
         }
         ListEmptyComponent={loadingMemories || loadingPets ? renderLoading : renderEmpty}
         renderItem={({ item }) => (
-          <Pressable style={styles.memoryCard} onPress={() => setSelectedMemory(item)}>
+          <PressableScale style={styles.memoryCard} onPress={() => setSelectedMemory(item)}>
             {item.photoUri ? (
               <Image source={{ uri: item.photoUri }} style={styles.memoryImage} />
             ) : (
@@ -244,7 +255,7 @@ export default function MemoriesScreen() {
                 {formatDate(item.memoryDate)}
               </AppText>
             </View>
-          </Pressable>
+          </PressableScale>
         )}
       />
 

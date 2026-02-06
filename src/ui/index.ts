@@ -6,6 +6,7 @@ export * from './Input';
 export * from './KeyboardAvoider';
 export * from './ScreenFade';
 export * from './Toast';
+export * from './PressableScale';
 export * from './useScreenPadding';
 export * from './masks';
 export * from './media';

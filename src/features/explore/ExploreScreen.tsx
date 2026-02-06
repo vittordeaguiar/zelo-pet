@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  LayoutAnimation,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
+  UIManager,
   View,
 } from 'react-native';
 import * as Location from 'expo-location';
@@ -24,7 +27,7 @@ import {
 
 import { colors, radii, spacing, typography } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, ScreenFade, useScreenPadding } from '@/ui';
+import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, PressableScale, ScreenFade, useScreenPadding } from '@/ui';
 import { LatLng, PlacesResult, searchPlaces } from '@/features/explore/placesProvider';
 import { isNetworkError } from '@/data/network';
 
@@ -175,6 +178,10 @@ export default function ExploreScreen() {
 
   const fetchPlaces = async () => {
     if (!GOOGLE_PLACES_API_KEY) {
+      if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+      }
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setPlaces(fallbackResults);
       setError('Configure a chave do Google Places para resultados reais.');
       return;
@@ -215,9 +222,17 @@ export default function ExploreScreen() {
         mapped.sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
       }
 
+      if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+      }
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setPlaces(mapped);
     } catch (err) {
       setError(isNetworkError(err) ? 'Sem conexão no momento.' : 'Não consegui carregar resultados reais.');
+      if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+      }
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setPlaces(fallbackResults);
     } finally {
       setLoading(false);
@@ -296,7 +311,7 @@ export default function ExploreScreen() {
             const selected = selectedCategory === category.id;
             const Icon = category.icon;
             return (
-              <Pressable
+              <PressableScale
                 key={category.id}
                 onPress={() => setSelectedCategory(category.id)}
                 style={[
@@ -310,7 +325,7 @@ export default function ExploreScreen() {
                 <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>
                   {category.label}
                 </AppText>
-              </Pressable>
+              </PressableScale>
             );
           })}
         </ScrollView>
@@ -422,7 +437,7 @@ export default function ExploreScreen() {
               {radiusOptions.map((option) => {
                 const selected = radius === option;
                 return (
-                  <Pressable
+                  <PressableScale
                     key={`${option}-km`}
                     onPress={() => setRadius(option)}
                     style={[
@@ -433,7 +448,7 @@ export default function ExploreScreen() {
                     <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>
                       {option} km
                     </AppText>
-                  </Pressable>
+                  </PressableScale>
                 );
               })}
             </View>
@@ -448,7 +463,7 @@ export default function ExploreScreen() {
               ].map((option) => {
                 const selected = sortBy === option.id;
                 return (
-                  <Pressable
+                  <PressableScale
                     key={option.id}
                     onPress={() => setSortBy(option.id as 'dist' | 'name')}
                     style={[
@@ -459,7 +474,7 @@ export default function ExploreScreen() {
                     <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>
                       {option.label}
                     </AppText>
-                  </Pressable>
+                  </PressableScale>
                 );
               })}
             </View>
