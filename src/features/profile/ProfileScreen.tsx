@@ -35,10 +35,26 @@ import { resetAppData } from '@/data/reset';
 import { activitiesRepo, petsRepo, tutorsRepo, vaccinesRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { useAppStore } from '@/state/appStore';
-import { ACCENT_OPTIONS, useThemeStore } from '@/state/themeStore';
+import { ACCENT_OPTIONS, ThemeMode, useThemeStore } from '@/state/themeStore';
 import { colors, radii, spacing } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, ScreenFade, isValidDateString, launchCamera, launchImageLibrary, maskDate, maskNumber, parseLocalizedNumber, useScreenPadding, useToast } from '@/ui';
+import {
+  AppText,
+  Button,
+  Card,
+  IconButton,
+  Input,
+  KeyboardAvoider,
+  ScreenFade,
+  isValidDateString,
+  launchCamera,
+  launchImageLibrary,
+  maskDate,
+  maskNumber,
+  parseLocalizedNumber,
+  useScreenPadding,
+  useToast,
+} from '@/ui';
 import {
   clearCachedWeather,
   clearLocationPreference,
@@ -64,12 +80,20 @@ type VaccineForm = {
   notes: string;
 };
 
+const THEME_MODE_OPTIONS: Array<{ id: ThemeMode; label: string }> = [
+  { id: 'system', label: 'Sistema' },
+  { id: 'light', label: 'Claro' },
+  { id: 'dark', label: 'Escuro' },
+];
+
 export default function ProfileScreen() {
   const activePetId = useActivePetStore((state) => state.activePetId);
   const setActivePetId = useActivePetStore((state) => state.setActivePetId);
   const setNeedsOnboarding = useAppStore((state) => state.setNeedsOnboarding);
   const accentId = useThemeStore((state) => state.accentId);
   const setAccentId = useThemeStore((state) => state.setAccentId);
+  const themeMode = useThemeStore((state) => state.themeMode);
+  const setThemeMode = useThemeStore((state) => state.setThemeMode);
   const themeColors = useThemeColors();
   const screenPadding = useScreenPadding();
   const toast = useToast();
@@ -497,44 +521,40 @@ export default function ProfileScreen() {
 
   const handleImportBackup = async () => {
     if (!importPayload.trim()) return;
-    Alert.alert(
-      'Importar backup?',
-      'Isso substituirá seus dados atuais.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Importar',
-          style: 'destructive',
-          onPress: async () => {
-            setImportLoading(true);
-            try {
-              await importDatabase(importPayload, { overwrite: true });
-              const updatedPets = await petsRepo.getPets();
-              if (updatedPets[0]) {
-                setActivePetId(updatedPets[0].id);
-              }
-              setNeedsOnboarding(updatedPets.length === 0);
-              setImportPayload('');
-              setImportModalVisible(false);
-              await loadData();
-              toast.show('Backup importado', 'success');
-            } catch (error) {
-              Alert.alert('Erro ao importar', 'Verifique se o conteúdo está correto.');
-              toast.show('Falha ao importar backup', 'error');
-            } finally {
-              setImportLoading(false);
+    Alert.alert('Importar backup?', 'Isso substituirá seus dados atuais.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Importar',
+        style: 'destructive',
+        onPress: async () => {
+          setImportLoading(true);
+          try {
+            await importDatabase(importPayload, { overwrite: true });
+            const updatedPets = await petsRepo.getPets();
+            if (updatedPets[0]) {
+              setActivePetId(updatedPets[0].id);
             }
-          },
+            setNeedsOnboarding(updatedPets.length === 0);
+            setImportPayload('');
+            setImportModalVisible(false);
+            await loadData();
+            toast.show('Backup importado', 'success');
+          } catch (error) {
+            Alert.alert('Erro ao importar', 'Verifique se o conteúdo está correto.');
+            toast.show('Falha ao importar backup', 'error');
+          } finally {
+            setImportLoading(false);
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   if (!pet) {
     return (
-      <View style={styles.emptyState}>
+      <View style={[styles.emptyState, { backgroundColor: themeColors.background }]}>
         <AppText variant="title">Perfil</AppText>
-        <AppText variant="body" color={colors.textSecondary}>
+        <AppText variant="body" color={themeColors.textSecondary}>
           Nenhum pet ativo por aqui.
         </AppText>
         {loadingProfile ? <ActivityIndicator /> : null}
@@ -543,12 +563,15 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScreenFade style={styles.container}>
-      <ScrollView contentContainerStyle={[styles.content, screenPadding]} showsVerticalScrollIndicator={false}>
+    <ScreenFade style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <ScrollView
+        contentContainerStyle={[styles.content, screenPadding]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <AppText variant="title">Perfil do Pet</AppText>
           <IconButton
-            icon={<Settings size={18} color={colors.textSecondary} />}
+            icon={<Settings size={18} color={themeColors.textSecondary} />}
             onPress={() => setSettingsVisible(true)}
             accessibilityLabel="Abrir configurações"
           />
@@ -579,7 +602,11 @@ export default function ProfileScreen() {
                 </View>
               </View>
             </View>
-            <Pressable style={styles.heroEdit} onPress={() => openPetForm(pet)} accessibilityLabel="Editar pet">
+            <Pressable
+              style={styles.heroEdit}
+              onPress={() => openPetForm(pet)}
+              accessibilityLabel="Editar pet"
+            >
               <Pencil size={16} color={themeColors.primary} />
             </Pressable>
           </View>
@@ -590,7 +617,7 @@ export default function ProfileScreen() {
             const Icon = stat.icon;
             return (
               <View key={stat.label} style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: `${stat.accent}1A` }]}> 
+                <View style={[styles.statIcon, { backgroundColor: `${stat.accent}1A` }]}>
                   <Icon size={16} color={stat.accent} />
                 </View>
                 <AppText variant="body" style={styles.statValue}>
@@ -679,7 +706,10 @@ export default function ProfileScreen() {
                   <Pressable onPress={() => openEditVaccine(vaccine)} style={styles.iconAction}>
                     <Pencil size={16} color={colors.textSecondary} />
                   </Pressable>
-                  <Pressable onPress={() => removeVaccine(vaccine.id)} style={styles.iconActionDanger}>
+                  <Pressable
+                    onPress={() => removeVaccine(vaccine.id)}
+                    style={styles.iconActionDanger}
+                  >
                     <Trash2 size={16} color={colors.danger} />
                   </Pressable>
                 </View>
@@ -723,7 +753,10 @@ export default function ProfileScreen() {
                       {tutor.role ?? 'Tutor'}
                     </AppText>
                   </View>
-                  <Pressable onPress={() => handleRemoveTutor(tutor.id)} style={styles.iconActionDanger}>
+                  <Pressable
+                    onPress={() => handleRemoveTutor(tutor.id)}
+                    style={styles.iconActionDanger}
+                  >
                     <Trash2 size={16} color={colors.danger} />
                   </Pressable>
                 </View>
@@ -735,10 +768,15 @@ export default function ProfileScreen() {
 
       <Modal visible={vaccineModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setVaccineModalVisible(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setVaccineModalVisible(false)}
+          />
           <KeyboardAvoider style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <AppText variant="subtitle">{vaccineForm.id ? 'Editar vacina' : 'Nova vacina'}</AppText>
+              <AppText variant="subtitle">
+                {vaccineForm.id ? 'Editar vacina' : 'Nova vacina'}
+              </AppText>
               <Pressable onPress={() => setVaccineModalVisible(false)}>
                 <X size={18} color={colors.textSecondary} />
               </Pressable>
@@ -753,13 +791,17 @@ export default function ProfileScreen() {
             <Input
               label="Data aplicada (YYYY-MM-DD)"
               value={vaccineForm.appliedAt}
-              onChangeText={(value) => setVaccineForm((prev) => ({ ...prev, appliedAt: maskDate(value) }))}
+              onChangeText={(value) =>
+                setVaccineForm((prev) => ({ ...prev, appliedAt: maskDate(value) }))
+              }
               placeholder="2025-10-10"
             />
             <Input
               label="Próxima dose (opcional)"
               value={vaccineForm.nextDoseAt}
-              onChangeText={(value) => setVaccineForm((prev) => ({ ...prev, nextDoseAt: maskDate(value) }))}
+              onChangeText={(value) =>
+                setVaccineForm((prev) => ({ ...prev, nextDoseAt: maskDate(value) }))
+              }
               placeholder="2026-10-10"
             />
             <Input
@@ -776,7 +818,10 @@ export default function ProfileScreen() {
               multiline
             />
 
-            <Button label={vaccineForm.id ? 'Salvar alterações' : 'Salvar vacina'} onPress={saveVaccine} />
+            <Button
+              label={vaccineForm.id ? 'Salvar alterações' : 'Salvar vacina'}
+              onPress={saveVaccine}
+            />
           </KeyboardAvoider>
         </View>
       </Modal>
@@ -830,7 +875,7 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.settingsSection}>
-                <AppText variant="caption" color={colors.textSecondary}>
+                <AppText variant="caption" color={themeColors.textSecondary}>
                   Aparência
                 </AppText>
                 <View style={styles.accentRow}>
@@ -847,8 +892,32 @@ export default function ProfileScreen() {
                         ]}
                       >
                         <View style={[styles.accentDot, { backgroundColor: accent.primary }]} />
-                        <AppText variant="caption" color={colors.textSecondary}>
+                        <AppText variant="caption" color={themeColors.textSecondary}>
                           {accent.label}
+                        </AppText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <View style={styles.modeRow}>
+                  {THEME_MODE_OPTIONS.map((modeOption) => {
+                    const selected = themeMode === modeOption.id;
+                    return (
+                      <Pressable
+                        key={modeOption.id}
+                        onPress={() => setThemeMode(modeOption.id)}
+                        style={[
+                          styles.modeChip,
+                          { borderColor: themeColors.border, backgroundColor: themeColors.surface },
+                          selected && styles.modeChipSelected,
+                          selected && { borderColor: themeColors.primary },
+                        ]}
+                      >
+                        <AppText
+                          variant="caption"
+                          color={selected ? themeColors.primary : themeColors.textSecondary}
+                        >
+                          {modeOption.label}
                         </AppText>
                       </Pressable>
                     );
@@ -993,65 +1062,105 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setPetFormVisible(false)} />
           <KeyboardAvoider style={styles.modalContent}>
-            <ScrollView contentContainerStyle={styles.modalContentInner} keyboardShouldPersistTaps="handled">
-            <View style={styles.modalHeader}>
-              <AppText variant="subtitle">{editingPet ? 'Editar pet' : 'Novo pet'}</AppText>
-              <Pressable onPress={() => setPetFormVisible(false)}>
-                <X size={18} color={colors.textSecondary} />
-              </Pressable>
-            </View>
-
-            <Pressable
-              style={styles.photoButton}
-              onPress={openPetPhotoOptions}
-              accessibilityRole="button"
-              accessibilityLabel="Adicionar foto do pet"
+            <ScrollView
+              contentContainerStyle={styles.modalContentInner}
+              keyboardShouldPersistTaps="handled"
             >
-              {petForm.photoUri ? (
-                <Image source={{ uri: petForm.photoUri }} style={styles.photoPreview} />
-              ) : (
-                <View style={[styles.photoPlaceholder, { backgroundColor: themeColors.primarySoft }]}>
-                  <AppText variant="caption" color={themeColors.primary}>
-                    Adicionar foto
-                  </AppText>
-                </View>
-              )}
-            </Pressable>
-
-            <Input label="Nome" value={petForm.name} onChangeText={(value) => setPetForm((prev) => ({ ...prev, name: value }))} />
-            <Input label="Espécie" value={petForm.species} onChangeText={(value) => setPetForm((prev) => ({ ...prev, species: value }))} />
-            <Input label="Raça" value={petForm.breed} onChangeText={(value) => setPetForm((prev) => ({ ...prev, breed: value }))} />
-            <Input label="Sexo" value={petForm.sex} onChangeText={(value) => setPetForm((prev) => ({ ...prev, sex: value }))} />
-            <Input label="Nascimento (YYYY-MM-DD)" value={petForm.birthDate} onChangeText={(value) => setPetForm((prev) => ({ ...prev, birthDate: maskDate(value) }))} />
-            <Input label="Peso (kg)" value={petForm.weightKg} onChangeText={(value) => setPetForm((prev) => ({ ...prev, weightKg: maskNumber(value) }))} keyboardType="numeric" />
-
-            <View style={styles.optionGroup}>
-              <AppText variant="caption" color={colors.textSecondary}>
-                Castrado
-              </AppText>
-              <View style={styles.optionRow}>
-                {['Sim', 'Não'].map((label) => {
-                  const value = label === 'Sim';
-                  const selected = petForm.neutered === value;
-                  return (
-                    <Pressable
-                      key={label}
-                      onPress={() => setPetForm((prev) => ({ ...prev, neutered: value }))}
-                      style={[
-                        styles.optionChip,
-                        selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
-                      ]}
-                    >
-                      <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>
-                        {label}
-                      </AppText>
-                    </Pressable>
-                  );
-                })}
+              <View style={styles.modalHeader}>
+                <AppText variant="subtitle">{editingPet ? 'Editar pet' : 'Novo pet'}</AppText>
+                <Pressable onPress={() => setPetFormVisible(false)}>
+                  <X size={18} color={colors.textSecondary} />
+                </Pressable>
               </View>
-            </View>
 
-            <Button label={editingPet ? 'Salvar alterações' : 'Salvar pet'} onPress={savePetForm} />
+              <Pressable
+                style={styles.photoButton}
+                onPress={openPetPhotoOptions}
+                accessibilityRole="button"
+                accessibilityLabel="Adicionar foto do pet"
+              >
+                {petForm.photoUri ? (
+                  <Image source={{ uri: petForm.photoUri }} style={styles.photoPreview} />
+                ) : (
+                  <View
+                    style={[styles.photoPlaceholder, { backgroundColor: themeColors.primarySoft }]}
+                  >
+                    <AppText variant="caption" color={themeColors.primary}>
+                      Adicionar foto
+                    </AppText>
+                  </View>
+                )}
+              </Pressable>
+
+              <Input
+                label="Nome"
+                value={petForm.name}
+                onChangeText={(value) => setPetForm((prev) => ({ ...prev, name: value }))}
+              />
+              <Input
+                label="Espécie"
+                value={petForm.species}
+                onChangeText={(value) => setPetForm((prev) => ({ ...prev, species: value }))}
+              />
+              <Input
+                label="Raça"
+                value={petForm.breed}
+                onChangeText={(value) => setPetForm((prev) => ({ ...prev, breed: value }))}
+              />
+              <Input
+                label="Sexo"
+                value={petForm.sex}
+                onChangeText={(value) => setPetForm((prev) => ({ ...prev, sex: value }))}
+              />
+              <Input
+                label="Nascimento (YYYY-MM-DD)"
+                value={petForm.birthDate}
+                onChangeText={(value) =>
+                  setPetForm((prev) => ({ ...prev, birthDate: maskDate(value) }))
+                }
+              />
+              <Input
+                label="Peso (kg)"
+                value={petForm.weightKg}
+                onChangeText={(value) =>
+                  setPetForm((prev) => ({ ...prev, weightKg: maskNumber(value) }))
+                }
+                keyboardType="numeric"
+              />
+
+              <View style={styles.optionGroup}>
+                <AppText variant="caption" color={colors.textSecondary}>
+                  Castrado
+                </AppText>
+                <View style={styles.optionRow}>
+                  {['Sim', 'Não'].map((label) => {
+                    const value = label === 'Sim';
+                    const selected = petForm.neutered === value;
+                    return (
+                      <Pressable
+                        key={label}
+                        onPress={() => setPetForm((prev) => ({ ...prev, neutered: value }))}
+                        style={[
+                          styles.optionChip,
+                          selected && {
+                            backgroundColor: themeColors.primary,
+                            borderColor: themeColors.primary,
+                          },
+                        ]}
+                      >
+                        <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>
+                          {label}
+                        </AppText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <Button
+                label={editingPet ? 'Salvar alterações' : 'Salvar pet'}
+                onPress={savePetForm}
+              />
             </ScrollView>
           </KeyboardAvoider>
         </View>
@@ -1113,7 +1222,10 @@ export default function ProfileScreen() {
 
       <Modal visible={tutorProfileVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setTutorProfileVisible(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setTutorProfileVisible(false)}
+          />
           <KeyboardAvoider style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <AppText variant="subtitle">Perfil do tutor</AppText>
@@ -1403,6 +1515,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   accentChipSelected: {
+    borderWidth: 2,
+  },
+  modeRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  modeChip: {
+    borderWidth: 1,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  modeChipSelected: {
     borderWidth: 2,
   },
   accentDot: {

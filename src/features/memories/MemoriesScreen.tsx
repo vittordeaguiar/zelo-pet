@@ -20,6 +20,7 @@ import {
   Heart,
   Image as ImageIcon,
   MapPin,
+  PencilLine,
   Plus,
   X,
 } from 'lucide-react-native';
@@ -28,7 +29,21 @@ import { memoriesRepo, petsRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing, typography } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, IconButton, Input, KeyboardAvoider, PressableScale, ScreenFade, isValidDateString, launchCamera, launchImageLibrary, maskDate, useScreenPadding, useToast } from '@/ui';
+import {
+  AppText,
+  Button,
+  IconButton,
+  Input,
+  KeyboardAvoider,
+  PressableScale,
+  ScreenFade,
+  isValidDateString,
+  launchCamera,
+  launchImageLibrary,
+  maskDate,
+  useScreenPadding,
+  useToast,
+} from '@/ui';
 
 const formatDate = (date?: string | null) => {
   if (!date) return '-';
@@ -51,6 +66,8 @@ type MemoryForm = {
   memoryDate: string;
   photoUri?: string | null;
 };
+
+const PHOTO_ONLY_FALLBACK_TEXT = 'Registro em foto';
 
 export default function MemoriesScreen() {
   const activePetId = useActivePetStore((state) => state.activePetId);
@@ -123,16 +140,28 @@ export default function MemoriesScreen() {
   };
 
   const pickImage = async () => {
-    const uri = await launchImageLibrary({ aspect: [4, 3], allowsEditing: true, quality: 0.8 });
+    const uri = await launchImageLibrary({
+      aspect: [4, 3],
+      allowsEditing: true,
+      quality: 0.8,
+      base64: true,
+    });
     if (uri) {
       setForm((prev) => ({ ...prev, photoUri: uri }));
+      toast.show('Foto adicionada', 'success');
     }
   };
 
   const takePhoto = async () => {
-    const uri = await launchCamera({ aspect: [4, 3], allowsEditing: true, quality: 0.8 });
+    const uri = await launchCamera({
+      aspect: [4, 3],
+      allowsEditing: true,
+      quality: 0.8,
+      base64: true,
+    });
     if (uri) {
       setForm((prev) => ({ ...prev, photoUri: uri }));
+      toast.show('Foto adicionada', 'success');
     }
   };
 
@@ -165,7 +194,12 @@ export default function MemoriesScreen() {
       toast.show('Cadastre um pet primeiro', 'info');
       return;
     }
-    if (!form.text.trim()) return;
+    const trimmedText = form.text.trim();
+    const hasPhoto = !!form.photoUri;
+    if (!trimmedText && !hasPhoto) {
+      toast.show('Adicione um texto ou uma foto', 'info');
+      return;
+    }
     if (!isValidDateString(form.memoryDate)) {
       Alert.alert('Data inválida', 'Informe uma data válida no formato YYYY-MM-DD.');
       return;
@@ -175,9 +209,9 @@ export default function MemoriesScreen() {
       await memoriesRepo.createMemory({
         petId: resolvedPetId,
         title: form.title.trim() || undefined,
-        text: form.text.trim(),
+        text: trimmedText || PHOTO_ONLY_FALLBACK_TEXT,
         memoryDate: form.memoryDate.trim(),
-        photoUri: form.photoUri ?? undefined,
+        photoUri: form.photoUri?.trim() || undefined,
       });
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setCreateModalVisible(false);
@@ -189,10 +223,10 @@ export default function MemoriesScreen() {
   };
 
   const renderEmpty = () => (
-      <View style={styles.emptyState}>
-        <View style={[styles.emptyIcon, { backgroundColor: themeColors.primarySoft }]}>
-          <Camera size={44} color={themeColors.primary} />
-        </View>
+    <View style={styles.emptyState}>
+      <View style={[styles.emptyIcon, { backgroundColor: themeColors.primarySoft }]}>
+        <Camera size={44} color={themeColors.primary} />
+      </View>
       <AppText variant="subtitle">Guarde bons momentos</AppText>
       <AppText variant="caption" color={colors.textSecondary} style={styles.emptyText}>
         Registre os melhores momentos com o {activePet?.name ?? 'seu pet'}.
@@ -211,7 +245,7 @@ export default function MemoriesScreen() {
   );
 
   return (
-    <ScreenFade style={styles.container}>
+    <ScreenFade style={[styles.container, { backgroundColor: themeColors.background }]}>
       <FlatList
         data={memories}
         keyExtractor={(item) => item.id}
@@ -306,7 +340,9 @@ export default function MemoriesScreen() {
             <Input
               label="Data (YYYY-MM-DD)"
               value={form.memoryDate}
-              onChangeText={(value) => setForm((prev) => ({ ...prev, memoryDate: maskDate(value) }))}
+              onChangeText={(value) =>
+                setForm((prev) => ({ ...prev, memoryDate: maskDate(value) }))
+              }
               placeholder="2026-02-04"
             />
             <Input
@@ -317,20 +353,71 @@ export default function MemoriesScreen() {
               multiline
             />
 
-            <Pressable
-              style={styles.photoPicker}
-              onPress={openPhotoOptions}
-              accessibilityRole="button"
-              accessibilityLabel="Adicionar foto da memória"
-            >
-              <Camera size={18} color={themeColors.primary} />
-              <AppText variant="caption" color={themeColors.primary}>
-                {form.photoUri ? 'Trocar foto' : 'Adicionar foto'}
+            <View style={styles.photoSection}>
+              <AppText variant="caption" color={colors.textSecondary}>
+                Foto da memória (opcional)
               </AppText>
-            </Pressable>
-            {form.photoUri ? (
-              <Image source={{ uri: form.photoUri }} style={styles.photoPreview} />
-            ) : null}
+              <PressableScale
+                style={styles.photoPickerCard}
+                onPress={openPhotoOptions}
+                accessibilityRole="button"
+                accessibilityLabel="Adicionar foto da memória"
+              >
+                {form.photoUri ? (
+                  <Image source={{ uri: form.photoUri }} style={styles.photoPreview} />
+                ) : (
+                  <View
+                    style={[styles.photoPlaceholderCard, { borderColor: themeColors.primarySoft }]}
+                  >
+                    <View
+                      style={[
+                        styles.photoPlaceholderIcon,
+                        { backgroundColor: themeColors.primarySoft },
+                      ]}
+                    >
+                      <Camera size={20} color={themeColors.primary} />
+                    </View>
+                    <AppText variant="body" style={styles.photoPickerTitle}>
+                      Adicionar foto
+                    </AppText>
+                    <AppText
+                      variant="caption"
+                      color={colors.textSecondary}
+                      style={styles.photoPickerHint}
+                    >
+                      Toque para tirar uma foto ou escolher da galeria.
+                    </AppText>
+                  </View>
+                )}
+              </PressableScale>
+
+              {form.photoUri ? (
+                <View style={styles.photoActions}>
+                  <PressableScale
+                    style={[styles.photoActionButton, { borderColor: themeColors.primarySoft }]}
+                    onPress={openPhotoOptions}
+                    accessibilityRole="button"
+                    accessibilityLabel="Trocar foto da memória"
+                  >
+                    <PencilLine size={14} color={themeColors.primary} />
+                    <AppText variant="caption" color={themeColors.primary}>
+                      Trocar foto
+                    </AppText>
+                  </PressableScale>
+                  <PressableScale
+                    style={styles.photoActionButton}
+                    onPress={() => setForm((prev) => ({ ...prev, photoUri: null }))}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remover foto da memória"
+                  >
+                    <X size={14} color={colors.textSecondary} />
+                    <AppText variant="caption" color={colors.textSecondary}>
+                      Remover
+                    </AppText>
+                  </PressableScale>
+                </View>
+              ) : null}
+            </View>
 
             <Button label="Salvar memória" onPress={saveMemory} />
           </KeyboardAvoider>
@@ -469,16 +556,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.sm,
   },
-  photoPicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  photoSection: {
     gap: spacing.sm,
-    paddingVertical: spacing.sm,
+  },
+  photoPickerCard: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+    overflow: 'hidden',
+  },
+  photoPlaceholderCard: {
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderRadius: radii.lg,
+    margin: spacing.sm,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+  },
+  photoPlaceholderIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoPickerTitle: {
+    fontWeight: '700',
+  },
+  photoPickerHint: {
+    textAlign: 'center',
   },
   photoPreview: {
     width: '100%',
     height: 180,
+  },
+  photoActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  photoActionButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
   },
   detailOverlay: {
     flex: 1,

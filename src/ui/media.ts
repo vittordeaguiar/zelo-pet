@@ -2,7 +2,8 @@ import { Alert, Linking } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
 const PERMISSION_TITLE = 'Permissão necessária';
-const PERMISSION_MESSAGE = 'Precisamos acessar sua galeria para adicionar fotos de pets e memórias.';
+const PERMISSION_MESSAGE =
+  'Precisamos acessar sua galeria para adicionar fotos de pets e memórias.';
 
 export const ensureMediaLibraryPermission = async () => {
   try {
@@ -82,6 +83,7 @@ type LaunchOptions = {
   aspect?: [number, number];
   quality?: number;
   allowsEditing?: boolean;
+  base64?: boolean;
 };
 
 export const launchImageLibrary = async (options: LaunchOptions = {}) => {
@@ -89,24 +91,25 @@ export const launchImageLibrary = async (options: LaunchOptions = {}) => {
   if (!granted) return null;
 
   try {
-    const mediaTypes =
-      ImagePicker.MediaType?.Images ??
-      ImagePicker.MediaTypeOptions?.Images ??
-      ImagePicker.MediaTypeOptions?.All;
+    const shouldReturnBase64 = options.base64 ?? false;
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes,
+      mediaTypes: ['images'],
+      base64: shouldReturnBase64,
       quality: 0.8,
       allowsEditing: true,
       ...options,
     });
 
     if (result.canceled) return null;
-    return result.assets[0]?.uri ?? null;
+    const asset = result.assets[0];
+    if (!asset) return null;
+    if (shouldReturnBase64 && asset.base64) {
+      const mimeType = asset.mimeType ?? 'image/jpeg';
+      return `data:${mimeType};base64,${asset.base64}`;
+    }
+    return asset.uri ?? null;
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Não foi possível abrir a galeria.';
+    const message = error instanceof Error ? error.message : 'Não foi possível abrir a galeria.';
     console.error('launchImageLibrary', error);
     Alert.alert('Erro', message);
     return null;
@@ -118,19 +121,24 @@ export const launchCamera = async (options: LaunchOptions = {}) => {
   if (!granted) return null;
 
   try {
+    const shouldReturnBase64 = options.base64 ?? false;
     const result = await ImagePicker.launchCameraAsync({
+      base64: shouldReturnBase64,
       quality: 0.8,
       allowsEditing: true,
       ...options,
     });
 
     if (result.canceled) return null;
-    return result.assets[0]?.uri ?? null;
+    const asset = result.assets[0];
+    if (!asset) return null;
+    if (shouldReturnBase64 && asset.base64) {
+      const mimeType = asset.mimeType ?? 'image/jpeg';
+      return `data:${mimeType};base64,${asset.base64}`;
+    }
+    return asset.uri ?? null;
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Não foi possível abrir a câmera.';
+    const message = error instanceof Error ? error.message : 'Não foi possível abrir a câmera.';
     console.error('launchCamera', error);
     Alert.alert('Erro', message);
     return null;

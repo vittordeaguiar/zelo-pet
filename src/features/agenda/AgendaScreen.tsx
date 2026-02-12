@@ -35,7 +35,21 @@ import { remindersRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, PressableScale, ScreenFade, isValidDateString, maskDate, maskTime, useScreenPadding, useToast } from '@/ui';
+import {
+  AppText,
+  Button,
+  Card,
+  IconButton,
+  Input,
+  KeyboardAvoider,
+  PressableScale,
+  ScreenFade,
+  isValidDateString,
+  maskDate,
+  maskTime,
+  useScreenPadding,
+  useToast,
+} from '@/ui';
 import {
   buildInsights,
   fetchWeather,
@@ -115,7 +129,9 @@ type FormState = {
 const today = new Date();
 
 export default function AgendaScreen() {
-  const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [currentMonth, setCurrentMonth] = useState(
+    new Date(today.getFullYear(), today.getMonth(), 1),
+  );
   const [selectedDate, setSelectedDate] = useState(today);
   const [reminders, setReminders] = useState<remindersRepo.Reminder[]>([]);
   const [loadingReminders, setLoadingReminders] = useState(false);
@@ -249,7 +265,10 @@ export default function AgendaScreen() {
     nextMonth.setMonth(currentMonth.getMonth() + direction, 1);
     setCurrentMonth(nextMonth);
 
-    if (nextMonth.getMonth() !== selectedDate.getMonth() || nextMonth.getFullYear() !== selectedDate.getFullYear()) {
+    if (
+      nextMonth.getMonth() !== selectedDate.getMonth() ||
+      nextMonth.getFullYear() !== selectedDate.getFullYear()
+    ) {
       setSelectedDate(new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 1));
     }
   };
@@ -326,8 +345,10 @@ export default function AgendaScreen() {
   const renderWeatherIcon = () => {
     if (!weather) return <Cloud size={24} color={themeColors.primary} />;
     const condition = weather.condition.toLowerCase();
-    if (condition.includes('tempestade')) return <CloudLightning size={24} color={themeColors.primary} />;
-    if (condition.includes('chuva forte')) return <CloudRain size={24} color={themeColors.primary} />;
+    if (condition.includes('tempestade'))
+      return <CloudLightning size={24} color={themeColors.primary} />;
+    if (condition.includes('chuva forte'))
+      return <CloudRain size={24} color={themeColors.primary} />;
     if (condition.includes('chuva')) return <CloudDrizzle size={24} color={themeColors.primary} />;
     if (condition.includes('neve')) return <CloudSnow size={24} color={themeColors.primary} />;
     if (condition.includes('neblina')) return <CloudFog size={24} color={themeColors.primary} />;
@@ -435,8 +456,11 @@ export default function AgendaScreen() {
   };
 
   return (
-    <ScreenFade style={styles.container}>
-      <ScrollView contentContainerStyle={[styles.content, screenPadding]} showsVerticalScrollIndicator={false}>
+    <ScreenFade style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <ScrollView
+        contentContainerStyle={[styles.content, screenPadding]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <View>
             <AppText variant="title">Agenda</AppText>
@@ -510,7 +534,13 @@ export default function AgendaScreen() {
                 >
                   <AppText
                     variant="caption"
-                    color={isSelected ? '#fff' : isCurrentMonth ? colors.textPrimary : colors.textSecondary}
+                    color={
+                      isSelected
+                        ? '#fff'
+                        : isCurrentMonth
+                          ? colors.textPrimary
+                          : colors.textSecondary
+                    }
                     style={isToday && !isSelected ? styles.todayText : undefined}
                   >
                     {item.date.getDate()}
@@ -564,7 +594,10 @@ export default function AgendaScreen() {
                   <Pressable onPress={() => openEditModal(reminder)} style={styles.iconAction}>
                     <Pencil size={16} color={colors.textSecondary} />
                   </Pressable>
-                  <Pressable onPress={() => removeReminder(reminder.id)} style={styles.iconActionDanger}>
+                  <Pressable
+                    onPress={() => removeReminder(reminder.id)}
+                    style={styles.iconActionDanger}
+                  >
                     <Trash2 size={16} color={colors.danger} />
                   </Pressable>
                 </View>
@@ -576,7 +609,10 @@ export default function AgendaScreen() {
 
       <Modal visible={weatherModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setWeatherModalVisible(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setWeatherModalVisible(false)}
+          />
           <KeyboardAvoider style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <AppText variant="subtitle">Definir localização</AppText>
@@ -654,7 +690,10 @@ export default function AgendaScreen() {
               multiline
             />
 
-            <Button label={form.id ? 'Salvar alterações' : 'Criar lembrete'} onPress={saveReminder} />
+            <Button
+              label={form.id ? 'Salvar alterações' : 'Criar lembrete'}
+              onPress={saveReminder}
+            />
           </KeyboardAvoider>
         </View>
       </Modal>

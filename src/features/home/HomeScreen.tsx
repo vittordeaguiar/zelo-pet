@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   LayoutAnimation,
   Modal,
@@ -25,11 +26,10 @@ import {
   Pencil,
   Trash2,
   Timer,
+  EllipsisVertical,
   X,
 } from 'lucide-react-native';
-import DraggableFlatList, {
-  RenderItemParams,
-} from 'react-native-draggable-flatlist';
+import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { Vibration } from 'react-native';
 
 import { activitiesRepo, petsRepo, tutorsRepo } from '@/data/repositories';
@@ -37,7 +37,18 @@ import { loadLocationPreference } from '@/features/agenda/weather';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing, typography } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, PressableScale, ScreenFade, useScreenPadding, useToast } from '@/ui';
+import {
+  AppText,
+  Button,
+  Card,
+  IconButton,
+  Input,
+  KeyboardAvoider,
+  PressableScale,
+  ScreenFade,
+  useScreenPadding,
+  useToast,
+} from '@/ui';
 import { DEFAULT_ACTIVITY_TEMPLATES } from '@/features/home/activityDefaults';
 
 type Template = activitiesRepo.ActivityTemplate;
@@ -291,8 +302,10 @@ export default function HomeScreen() {
     toast.show('Atividade adicionada', 'success');
   };
 
-  const openEditTemplate = (template: Template) => {
-    setManageModalVisible(false);
+  const openEditTemplate = (template: Template, options?: { closeManageModal?: boolean }) => {
+    if (options?.closeManageModal ?? true) {
+      setManageModalVisible(false);
+    }
     setEditingTemplate(template);
     setNewActivityTitle(template.title);
     setNewActivityTarget(template.targetCountPerDay ? String(template.targetCountPerDay) : '');
@@ -329,6 +342,26 @@ export default function HomeScreen() {
     toast.show('Atividade removida', 'info');
   };
 
+  const openTemplateActions = (template: Template) => {
+    Alert.alert(
+      template.title,
+      'O que você deseja fazer com esta atividade?',
+      [
+        {
+          text: 'Editar',
+          onPress: () => openEditTemplate(template, { closeManageModal: false }),
+        },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: () => handleDeleteTemplate(template),
+        },
+        { text: 'Cancelar', style: 'cancel' },
+      ],
+      { cancelable: true },
+    );
+  };
+
   const handleReorderTemplates = async (data: Template[]) => {
     setTemplates(data);
     await Promise.all(
@@ -346,7 +379,11 @@ export default function HomeScreen() {
   };
 
   const renderPetCard = () => (
-    <PressableScale onPress={() => setPetModalVisible(true)} accessibilityRole="button" accessibilityLabel="Selecionar pet">
+    <PressableScale
+      onPress={() => setPetModalVisible(true)}
+      accessibilityRole="button"
+      accessibilityLabel="Selecionar pet"
+    >
       <Card style={styles.petCard}>
         <View style={styles.petRow}>
           {activePet?.photoUri ? (
@@ -383,7 +420,11 @@ export default function HomeScreen() {
           </AppText>
         </View>
         <View style={styles.checklistActions}>
-          <Pressable onPress={() => setManageModalVisible(true)} accessibilityRole="button" accessibilityLabel="Gerenciar checklist">
+          <Pressable
+            onPress={() => setManageModalVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Gerenciar checklist"
+          >
             <AppText variant="caption" color={themeColors.primary}>
               Gerenciar
             </AppText>
@@ -431,15 +472,15 @@ export default function HomeScreen() {
 
           return (
             <View key={template.id} style={[styles.activityRow, done && styles.activityDone]}>
-            <View
-              style={[
-                styles.activityIcon,
-                done && styles.activityIconDone,
-                done && { backgroundColor: themeColors.primarySoft },
-              ]}
-            >
-              <Icon size={18} color={done ? themeColors.primary : colors.textSecondary} />
-            </View>
+              <View
+                style={[
+                  styles.activityIcon,
+                  done && styles.activityIconDone,
+                  done && { backgroundColor: themeColors.primarySoft },
+                ]}
+              >
+                <Icon size={18} color={done ? themeColors.primary : colors.textSecondary} />
+              </View>
               <View style={styles.activityInfo}>
                 <AppText variant="body" style={styles.activityTitle}>
                   {template.title}
@@ -450,7 +491,10 @@ export default function HomeScreen() {
               </View>
               <View style={styles.activityActions}>
                 {template.isTimer ? (
-                  <Pressable style={styles.actionButtonSecondary} onPress={() => handleRegister(template.id)}>
+                  <Pressable
+                    style={styles.actionButtonSecondary}
+                    onPress={() => handleRegister(template.id)}
+                  >
                     <Text style={styles.actionTextSecondary}>Registrar</Text>
                   </Pressable>
                 ) : null}
@@ -472,6 +516,14 @@ export default function HomeScreen() {
                     <Text style={styles.actionText}>Registrar</Text>
                   )}
                 </Pressable>
+                <Pressable
+                  onPress={() => openTemplateActions(template)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Editar opções de ${template.title}`}
+                  style={styles.activityMenuButton}
+                >
+                  <EllipsisVertical size={16} color={colors.textSecondary} />
+                </Pressable>
               </View>
             </View>
           );
@@ -481,7 +533,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <ScreenFade style={styles.container}>
+    <ScreenFade style={[styles.container, { backgroundColor: themeColors.background }]}>
       <ScrollView
         contentContainerStyle={[styles.content, screenPadding]}
         showsVerticalScrollIndicator={false}
@@ -516,7 +568,10 @@ export default function HomeScreen() {
                 key={date.toISOString()}
                 style={[
                   styles.dayChip,
-                  selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                  selected && {
+                    backgroundColor: themeColors.primary,
+                    borderColor: themeColors.primary,
+                  },
                 ]}
                 onPress={() => setSelectedDate(date)}
               >
@@ -554,9 +609,7 @@ export default function HomeScreen() {
                 }}
               >
                 <AppText variant="body">{pet.name}</AppText>
-                {pet.id === activePetId ? (
-                  <Check size={16} color={themeColors.primary} />
-                ) : null}
+                {pet.id === activePetId ? <Check size={16} color={themeColors.primary} /> : null}
               </Pressable>
             ))}
             {pets.length === 0 ? (
@@ -601,7 +654,10 @@ export default function HomeScreen() {
                 ]}
                 onPress={() => setNewActivityType('register')}
               >
-                <AppText variant="caption" color={newActivityType === 'register' ? '#fff' : colors.textSecondary}>
+                <AppText
+                  variant="caption"
+                  color={newActivityType === 'register' ? '#fff' : colors.textSecondary}
+                >
                   Registrar
                 </AppText>
               </Pressable>
@@ -612,7 +668,10 @@ export default function HomeScreen() {
                 ]}
                 onPress={() => setNewActivityType('timer')}
               >
-                <AppText variant="caption" color={newActivityType === 'timer' ? '#fff' : colors.textSecondary}>
+                <AppText
+                  variant="caption"
+                  color={newActivityType === 'timer' ? '#fff' : colors.textSecondary}
+                >
                   Timer
                 </AppText>
               </Pressable>
@@ -628,7 +687,10 @@ export default function HomeScreen() {
                     onPress={() => setNewActivityIcon(iconKey)}
                     style={[
                       styles.iconChip,
-                      selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                      selected && {
+                        backgroundColor: themeColors.primary,
+                        borderColor: themeColors.primary,
+                      },
                     ]}
                   >
                     <Icon size={18} color={selected ? '#fff' : colors.textSecondary} />
@@ -655,6 +717,9 @@ export default function HomeScreen() {
                 <X size={18} color={colors.textSecondary} />
               </Pressable>
             </View>
+            <AppText variant="caption" color={colors.textSecondary}>
+              Toque em editar/excluir ou segure uma linha para reordenar.
+            </AppText>
             <DraggableFlatList
               data={templates}
               keyExtractor={(item) => item.id}
@@ -676,11 +741,27 @@ export default function HomeScreen() {
                     </AppText>
                   </View>
                   <View style={styles.manageActions}>
-                    <Pressable onPress={() => openEditTemplate(item)} style={styles.iconAction}>
+                    <Pressable
+                      onPress={() => openEditTemplate(item)}
+                      style={styles.iconAction}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Editar ${item.title}`}
+                    >
                       <Pencil size={16} color={colors.textSecondary} />
+                      <AppText variant="caption" color={colors.textSecondary}>
+                        Editar
+                      </AppText>
                     </Pressable>
-                    <Pressable onPress={() => handleDeleteTemplate(item)} style={styles.iconActionDanger}>
+                    <Pressable
+                      onPress={() => handleDeleteTemplate(item)}
+                      style={styles.iconActionDanger}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Excluir ${item.title}`}
+                    >
                       <Trash2 size={16} color={colors.danger} />
+                      <AppText variant="caption" color={colors.danger}>
+                        Excluir
+                      </AppText>
                     </Pressable>
                   </View>
                 </Pressable>
@@ -709,7 +790,8 @@ export default function HomeScreen() {
             </View>
             <View style={styles.timerBody}>
               <AppText variant="title" style={styles.timerValue}>
-                {Math.floor(timerState.elapsed / 60)}:{`${timerState.elapsed % 60}`.padStart(2, '0')}
+                {Math.floor(timerState.elapsed / 60)}:
+                {`${timerState.elapsed % 60}`.padStart(2, '0')}
               </AppText>
               <AppText variant="caption" color={colors.textSecondary}>
                 Toque em iniciar para contabilizar a duração.
@@ -895,6 +977,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: typography.size.sm,
   },
+  activityMenuButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.35)',
@@ -974,21 +1066,27 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   iconAction: {
-    width: 36,
+    minWidth: 88,
     height: 36,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    paddingHorizontal: spacing.sm,
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.xs,
     justifyContent: 'center',
   },
   iconActionDanger: {
-    width: 36,
+    minWidth: 88,
     height: 36,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    paddingHorizontal: spacing.sm,
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.xs,
     justifyContent: 'center',
   },
   typeButton: {

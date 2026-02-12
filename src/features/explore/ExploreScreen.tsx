@@ -27,7 +27,17 @@ import {
 
 import { colors, radii, spacing, typography } from '@/theme';
 import { useThemeColors } from '@/theme';
-import { AppText, Button, Card, IconButton, Input, KeyboardAvoider, PressableScale, ScreenFade, useScreenPadding } from '@/ui';
+import {
+  AppText,
+  Button,
+  Card,
+  IconButton,
+  Input,
+  KeyboardAvoider,
+  PressableScale,
+  ScreenFade,
+  useScreenPadding,
+} from '@/ui';
 import { LatLng, PlacesResult, searchPlaces } from '@/features/explore/placesProvider';
 import { isNetworkError } from '@/data/network';
 
@@ -100,9 +110,7 @@ const haversineKm = (a: LatLng, b: LatLng) => {
   const lat1 = toRad(a.latitude);
   const lat2 = toRad(b.latitude);
 
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * earthRadius * Math.asin(Math.sqrt(h));
 };
 
@@ -192,8 +200,11 @@ export default function ExploreScreen() {
 
     try {
       const categoryQuery =
-        CATEGORIES.find((category) => category.id === selectedCategory)?.query ?? 'serviços para pets';
-      const textQuery = searchQuery.trim() ? `${searchQuery.trim()} ${categoryQuery}` : categoryQuery;
+        CATEGORIES.find((category) => category.id === selectedCategory)?.query ??
+        'serviços para pets';
+      const textQuery = searchQuery.trim()
+        ? `${searchQuery.trim()} ${categoryQuery}`
+        : categoryQuery;
       const locationBias = coords
         ? {
             center: coords,
@@ -213,7 +224,9 @@ export default function ExploreScreen() {
         maxResults: 20,
       });
 
-      let mapped = results.map((place) => mapPlacesToResult(place, coords ?? undefined, categoryLabel));
+      let mapped = results.map((place) =>
+        mapPlacesToResult(place, coords ?? undefined, categoryLabel),
+      );
 
       if (sortBy === 'name') {
         mapped.sort((a, b) => a.name.localeCompare(b.name));
@@ -228,7 +241,9 @@ export default function ExploreScreen() {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setPlaces(mapped);
     } catch (err) {
-      setError(isNetworkError(err) ? 'Sem conexão no momento.' : 'Não consegui carregar resultados reais.');
+      setError(
+        isNetworkError(err) ? 'Sem conexão no momento.' : 'Não consegui carregar resultados reais.',
+      );
       if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
         UIManager.setLayoutAnimationEnabledExperimental(true);
       }
@@ -276,7 +291,7 @@ export default function ExploreScreen() {
   const results = GOOGLE_PLACES_API_KEY ? places : fallbackResults;
 
   return (
-    <ScreenFade style={styles.container}>
+    <ScreenFade style={[styles.container, { backgroundColor: themeColors.background }]}>
       <ScrollView contentContainerStyle={[styles.content, screenPadding]}>
         <View style={styles.header}>
           <View>
@@ -306,7 +321,11 @@ export default function ExploreScreen() {
           />
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesRow}
+        >
           {CATEGORIES.map((category) => {
             const selected = selectedCategory === category.id;
             const Icon = category.icon;
@@ -316,12 +335,13 @@ export default function ExploreScreen() {
                 onPress={() => setSelectedCategory(category.id)}
                 style={[
                   styles.categoryChip,
-                  selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                  selected && {
+                    backgroundColor: themeColors.primary,
+                    borderColor: themeColors.primary,
+                  },
                 ]}
               >
-                {Icon ? (
-                  <Icon size={16} color={selected ? '#fff' : colors.textSecondary} />
-                ) : null}
+                {Icon ? <Icon size={16} color={selected ? '#fff' : colors.textSecondary} /> : null}
                 <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>
                   {category.label}
                 </AppText>
@@ -385,9 +405,7 @@ export default function ExploreScreen() {
                     {place.name}
                   </AppText>
                   <AppText variant="caption" color={colors.textSecondary}>
-                    {place.distanceKm !== undefined
-                      ? `${place.distanceKm.toFixed(1)} km • `
-                      : ''}
+                    {place.distanceKm !== undefined ? `${place.distanceKm.toFixed(1)} km • ` : ''}
                     {place.rating ? `${place.rating} ★` : 'Sem avaliação'}
                     {place.reviews ? ` (${place.reviews})` : ''}
                   </AppText>
@@ -442,7 +460,10 @@ export default function ExploreScreen() {
                     onPress={() => setRadius(option)}
                     style={[
                       styles.optionChip,
-                      selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                      selected && {
+                        backgroundColor: themeColors.primary,
+                        borderColor: themeColors.primary,
+                      },
                     ]}
                   >
                     <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>
@@ -468,7 +489,10 @@ export default function ExploreScreen() {
                     onPress={() => setSortBy(option.id as 'dist' | 'name')}
                     style={[
                       styles.optionChip,
-                      selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                      selected && {
+                        backgroundColor: themeColors.primary,
+                        borderColor: themeColors.primary,
+                      },
                     ]}
                   >
                     <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>

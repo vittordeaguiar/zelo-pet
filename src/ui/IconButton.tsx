@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Animated, Pressable, StyleProp, StyleSheet, ViewStyle } from 'react-native';
 
-import { colors, radii, spacing } from '@/theme';
+import { radii, spacing } from '@/theme';
 import { useThemeColors } from '@/theme';
 
 type Variant = 'primary' | 'ghost';
@@ -72,6 +72,10 @@ export function IconButton({
         styles.base,
         variant === 'primary' ? styles.primary : styles.ghost,
         variant === 'primary' && { backgroundColor: colors.primary },
+        variant === 'ghost' && {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        },
         { width: size, height: size },
         style,
         { transform: [{ scale }], opacity },
@@ -93,8 +97,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   ghost: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
   },
 });

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { enableScreens } from 'react-native-screens';
@@ -17,7 +17,8 @@ import { initializeDatabase } from '@/data/db';
 import { petsRepo } from '@/data/repositories';
 import OnboardingFlow from '@/features/onboarding/OnboardingFlow';
 import RootNavigator from '@/navigation/RootNavigator';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
+import { useResolvedThemeMode, useThemeColors } from '@/theme';
 import { AppText, ToastProvider } from '@/ui';
 import { useAppStore } from '@/state/appStore';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
@@ -29,6 +30,8 @@ const shouldSeed = process.env.EXPO_PUBLIC_SEED_DB === 'true';
 
 export default function App() {
   const [ready, setReady] = useState(false);
+  const themeColors = useThemeColors();
+  const resolvedThemeMode = useResolvedThemeMode();
   const needsOnboarding = useAppStore((state) => state.needsOnboarding);
   const setNeedsOnboarding = useAppStore((state) => state.setNeedsOnboarding);
   const [fontsLoaded] = useFonts({
@@ -69,14 +72,27 @@ export default function App() {
 
   if (!ready || !fontsLoaded) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={colors.primary} />
-        <AppText variant="caption" color={colors.textSecondary}>
+      <View style={[styles.loading, { backgroundColor: themeColors.background }]}>
+        <ActivityIndicator color={themeColors.primary} />
+        <AppText variant="caption" color={themeColors.textSecondary}>
           Preparando dados locais...
         </AppText>
       </View>
     );
   }
+
+  const navigationTheme = resolvedThemeMode === 'dark' ? DarkTheme : DefaultTheme;
+  const mergedNavigationTheme = {
+    ...navigationTheme,
+    colors: {
+      ...navigationTheme.colors,
+      background: themeColors.background,
+      card: themeColors.surface,
+      text: themeColors.textPrimary,
+      border: themeColors.border,
+      primary: themeColors.primary,
+    },
+  };
 
   if (needsOnboarding) {
     return (
@@ -91,11 +107,11 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={styles.container}>
+    <GestureHandlerRootView style={[styles.container, { backgroundColor: themeColors.background }]}>
       <SafeAreaProvider>
         <ToastProvider>
-          <NavigationContainer>
-            <StatusBar style="dark" />
+          <NavigationContainer theme={mergedNavigationTheme}>
+            <StatusBar style={resolvedThemeMode === 'dark' ? 'light' : 'dark'} />
             <ErrorBoundary>
               <RootNavigator />
             </ErrorBoundary>
@@ -109,11 +125,9 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   loading: {
     flex: 1,
-    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,

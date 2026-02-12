@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   ActionSheetIOS,
+  Alert,
+  Animated,
   Image,
   Platform,
   Pressable,
@@ -9,13 +10,26 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Camera, Check, Plus } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Camera, Check } from 'lucide-react-native';
 
 import { petsRepo, tutorsRepo } from '@/data/repositories';
 import { useActivePetStore } from '@/state/activePetStore';
 import { colors, radii, spacing } from '@/theme';
-import { AppText, Button, Input, KeyboardAvoider, isValidDateString, launchCamera, launchImageLibrary, maskDate, maskNumber, parseLocalizedNumber, useScreenPadding } from '@/ui';
 import { useThemeColors } from '@/theme';
+import {
+  AppText,
+  Button,
+  Input,
+  isValidDateString,
+  KeyboardAvoider,
+  launchCamera,
+  launchImageLibrary,
+  maskDate,
+  maskNumber,
+  parseLocalizedNumber,
+  PressableScale,
+  useScreenPadding,
+} from '@/ui';
 
 type Step = 'welcome' | 'tutor' | 'pet' | 'summary';
 
@@ -39,8 +53,21 @@ type Props = {
   onComplete: () => void;
 };
 
+type StepAction = {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+};
+
 const speciesOptions = ['Cão', 'Gato', 'Outro'];
 const sexOptions = ['Macho', 'Fêmea'];
+const onboardingSteps: Step[] = ['welcome', 'tutor', 'pet', 'summary'];
+const stepLabels: Record<Step, string> = {
+  welcome: 'Boas-vindas',
+  tutor: 'Tutor',
+  pet: 'Pet',
+  summary: 'Conclusão',
+};
 
 const createPetForm = (): PetForm => ({
   name: '',
@@ -59,6 +86,7 @@ export default function OnboardingFlow({ onComplete }: Props) {
   const themeColors = useThemeColors();
 
   const [step, setStep] = useState<Step>('welcome');
+  const [stepDirection, setStepDirection] = useState<1 | -1>(1);
   const [tutorProfile, setTutorProfile] = useState<TutorProfile>({
     name: '',
     role: 'Dono',
@@ -67,8 +95,56 @@ export default function OnboardingFlow({ onComplete }: Props) {
   const [createdPets, setCreatedPets] = useState<petsRepo.Pet[]>([]);
   const [saving, setSaving] = useState(false);
 
+  const stepOpacity = useRef(new Animated.Value(0)).current;
+  const stepTranslateX = useRef(new Animated.Value(18)).current;
+
   const canContinueTutor = useMemo(() => tutorProfile.name.trim().length > 0, [tutorProfile]);
   const canSavePet = useMemo(() => petForm.name.trim().length > 0, [petForm]);
+
+  const currentStepIndex = onboardingSteps.indexOf(step);
+  const isFirstStep = currentStepIndex === 0;
+
+  const layoutPadding = useMemo(
+    () => ({
+      paddingTop: Math.max(spacing.lg, screenPadding.paddingTop - spacing.sm),
+      paddingBottom: Math.max(spacing.md, screenPadding.paddingBottom - spacing.xl),
+    }),
+    [screenPadding.paddingBottom, screenPadding.paddingTop],
+  );
+
+  useEffect(() => {
+    stepOpacity.setValue(0);
+    stepTranslateX.setValue(stepDirection * 18);
+
+    Animated.parallel([
+      Animated.timing(stepOpacity, {
+        toValue: 1,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+      Animated.spring(stepTranslateX, {
+        toValue: 0,
+        useNativeDriver: true,
+        speed: 16,
+        bounciness: 6,
+      }),
+    ]).start();
+  }, [step, stepDirection, stepOpacity, stepTranslateX]);
+
+  const goToStep = (nextStep: Step) => {
+    if (nextStep === step) return;
+
+    const nextStepIndex = onboardingSteps.indexOf(nextStep);
+    if (nextStepIndex < 0) return;
+
+    setStepDirection(nextStepIndex > currentStepIndex ? 1 : -1);
+    setStep(nextStep);
+  };
+
+  const goBack = () => {
+    if (isFirstStep) return;
+    goToStep(onboardingSteps[currentStepIndex - 1]);
+  };
 
   const pickImage = async () => {
     const uri = await launchImageLibrary({ aspect: [1, 1], allowsEditing: true, quality: 0.8 });
@@ -140,22 +216,58 @@ export default function OnboardingFlow({ onComplete }: Props) {
 
       setCreatedPets((prev) => [...prev, pet]);
       setPetForm(createPetForm());
-      setStep('summary');
+      goToStep('summary');
     } finally {
       setSaving(false);
     }
   };
 
+  const primaryAction = useMemo<StepAction>(() => {
+    if (step === 'welcome') {
+      return {
+        label: 'Começar',
+        onPress: () => goToStep('tutor'),
+      };
+    }
+
+    if (step === 'tutor') {
+      return {
+        label: 'Continuar',
+        onPress: () => goToStep('pet'),
+        disabled: !canContinueTutor,
+      };
+    }
+
+    if (step === 'pet') {
+      return {
+        label: saving ? 'Salvando...' : 'Salvar pet',
+        onPress: savePet,
+        disabled: !canSavePet || saving,
+      };
+    }
+
+    return {
+      label: 'Entrar no app',
+      onPress: onComplete,
+    };
+  }, [canContinueTutor, canSavePet, onComplete, savePet, saving, step]);
+
   const renderWelcome = () => (
     <View style={styles.centerBlock}>
-        <View style={[styles.heroIcon, { backgroundColor: themeColors.primarySoft }]}>
-          <Camera size={40} color={themeColors.primary} />
-        </View>
-      <AppText variant="title">Boas-vindas!</AppText>
+      <View style={[styles.heroIcon, { backgroundColor: themeColors.primarySoft }]}>
+        <Camera size={40} color={themeColors.primary} />
+      </View>
+      <AppText variant="title" style={styles.centerText}>
+        Boas-vindas!
+      </AppText>
       <AppText variant="body" color={colors.textSecondary} style={styles.centerText}>
         Vamos configurar seu perfil de tutor e cadastrar seu primeiro pet.
       </AppText>
-      <Button label="Começar" onPress={() => setStep('tutor')} />
+      <View style={[styles.tipCard, { borderColor: themeColors.primarySoft }]}>
+        <AppText variant="caption" color={colors.textSecondary} style={styles.centerText}>
+          Use as setas abaixo para avançar e voltar entre as etapas.
+        </AppText>
+      </View>
     </View>
   );
 
@@ -178,8 +290,6 @@ export default function OnboardingFlow({ onComplete }: Props) {
         onChangeText={(value) => setTutorProfile((prev) => ({ ...prev, role: value }))}
         placeholder="Ex.: Dona"
       />
-
-      <Button label="Continuar" onPress={() => setStep('pet')} disabled={!canContinueTutor} />
     </View>
   );
 
@@ -208,7 +318,11 @@ export default function OnboardingFlow({ onComplete }: Props) {
         )}
       </Pressable>
 
-      <Input label="Nome" value={petForm.name} onChangeText={(value) => setPetForm((prev) => ({ ...prev, name: value }))} />
+      <Input
+        label="Nome"
+        value={petForm.name}
+        onChangeText={(value) => setPetForm((prev) => ({ ...prev, name: value }))}
+      />
 
       <View style={styles.optionGroup}>
         <AppText variant="caption" color={colors.textSecondary}>
@@ -216,14 +330,17 @@ export default function OnboardingFlow({ onComplete }: Props) {
         </AppText>
         <View style={styles.optionRow}>
           {speciesOptions.map((option) => (
-              <Pressable
-                key={option}
-                onPress={() => setPetForm((prev) => ({ ...prev, species: option }))}
-                style={[
-                  styles.optionChip,
-                  petForm.species === option && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
-                ]}
-              >
+            <Pressable
+              key={option}
+              onPress={() => setPetForm((prev) => ({ ...prev, species: option }))}
+              style={[
+                styles.optionChip,
+                petForm.species === option && {
+                  backgroundColor: themeColors.primary,
+                  borderColor: themeColors.primary,
+                },
+              ]}
+            >
               <AppText
                 variant="caption"
                 color={petForm.species === option ? '#fff' : colors.textSecondary}
@@ -248,14 +365,17 @@ export default function OnboardingFlow({ onComplete }: Props) {
         </AppText>
         <View style={styles.optionRow}>
           {sexOptions.map((option) => (
-              <Pressable
-                key={option}
-                onPress={() => setPetForm((prev) => ({ ...prev, sex: option }))}
-                style={[
-                  styles.optionChip,
-                  petForm.sex === option && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
-                ]}
-              >
+            <Pressable
+              key={option}
+              onPress={() => setPetForm((prev) => ({ ...prev, sex: option }))}
+              style={[
+                styles.optionChip,
+                petForm.sex === option && {
+                  backgroundColor: themeColors.primary,
+                  borderColor: themeColors.primary,
+                },
+              ]}
+            >
               <AppText
                 variant="caption"
                 color={petForm.sex === option ? '#fff' : colors.textSecondary}
@@ -295,7 +415,10 @@ export default function OnboardingFlow({ onComplete }: Props) {
                 onPress={() => setPetForm((prev) => ({ ...prev, neutered: value }))}
                 style={[
                   styles.optionChip,
-                  selected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                  selected && {
+                    backgroundColor: themeColors.primary,
+                    borderColor: themeColors.primary,
+                  },
                 ]}
               >
                 <AppText variant="caption" color={selected ? '#fff' : colors.textSecondary}>
@@ -306,8 +429,6 @@ export default function OnboardingFlow({ onComplete }: Props) {
           })}
         </View>
       </View>
-
-      <Button label={saving ? 'Salvando...' : 'Salvar pet'} onPress={savePet} disabled={!canSavePet} />
     </View>
   );
 
@@ -336,61 +457,175 @@ export default function OnboardingFlow({ onComplete }: Props) {
         ))}
       </View>
 
-      <Button label="Adicionar outro pet" onPress={() => setStep('pet')} />
-      <Pressable style={styles.secondaryCta} onPress={onComplete}>
-        <Plus size={14} color={colors.textSecondary} />
-        <AppText variant="caption" color={colors.textSecondary}>
-          Finalizar
-        </AppText>
-      </Pressable>
+      <Button label="Adicionar outro pet" variant="secondary" onPress={() => goToStep('pet')} />
+      <AppText variant="caption" color={colors.textSecondary} style={styles.summaryHint}>
+        Toque na seta à direita para concluir e entrar no app.
+      </AppText>
     </View>
   );
 
   return (
-    <KeyboardAvoider style={styles.scroll}>
-      <ScrollView
-        contentContainerStyle={[styles.container, screenPadding]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {step === 'welcome' && renderWelcome()}
-        {step === 'tutor' && renderTutor()}
-        {step === 'pet' && renderPet()}
-        {step === 'summary' && renderSummary()}
-      </ScrollView>
+    <KeyboardAvoider style={[styles.root, { backgroundColor: themeColors.background }]}>
+      <View style={[styles.layout, layoutPadding, { backgroundColor: themeColors.background }]}>
+        <View style={styles.progressBlock}>
+          <View style={styles.progressHeader}>
+            <AppText variant="caption" color={colors.textSecondary}>
+              Etapa {currentStepIndex + 1} de {onboardingSteps.length}
+            </AppText>
+            <AppText variant="caption" color={themeColors.primary}>
+              {stepLabels[step]}
+            </AppText>
+          </View>
+          <View style={styles.progressRow}>
+            {onboardingSteps.map((stepKey, index) => {
+              const active = index === currentStepIndex;
+              const completed = index < currentStepIndex;
+              return (
+                <View
+                  key={stepKey}
+                  style={[
+                    styles.progressDot,
+                    active && {
+                      flex: 1.7,
+                      backgroundColor: themeColors.primary,
+                      borderColor: themeColors.primary,
+                    },
+                    completed && {
+                      backgroundColor: themeColors.primarySoft,
+                      borderColor: themeColors.primarySoft,
+                    },
+                  ]}
+                />
+              );
+            })}
+          </View>
+        </View>
+
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Animated.View
+            style={{
+              opacity: stepOpacity,
+              transform: [{ translateX: stepTranslateX }],
+            }}
+          >
+            {step === 'welcome' && renderWelcome()}
+            {step === 'tutor' && renderTutor()}
+            {step === 'pet' && renderPet()}
+            {step === 'summary' && renderSummary()}
+          </Animated.View>
+        </ScrollView>
+
+        <View style={styles.navigationRow}>
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel="Voltar etapa"
+            onPress={goBack}
+            disabled={isFirstStep}
+            style={[
+              styles.navButton,
+              styles.navButtonGhost,
+              isFirstStep && styles.navButtonDisabled,
+            ]}
+          >
+            <ArrowLeft size={16} color={isFirstStep ? colors.textSecondary : colors.textPrimary} />
+            <AppText
+              variant="caption"
+              color={isFirstStep ? colors.textSecondary : colors.textPrimary}
+            >
+              Voltar
+            </AppText>
+          </PressableScale>
+
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel={primaryAction.label}
+            onPress={primaryAction.onPress}
+            disabled={primaryAction.disabled}
+            style={[
+              styles.navButton,
+              styles.navButtonPrimary,
+              { backgroundColor: themeColors.primary },
+              primaryAction.disabled && styles.navButtonDisabled,
+            ]}
+          >
+            <AppText variant="body" color="#FFFFFF" style={styles.navPrimaryLabel}>
+              {primaryAction.label}
+            </AppText>
+            <ArrowRight size={16} color="#FFFFFF" />
+          </PressableScale>
+        </View>
+      </View>
     </KeyboardAvoider>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: {
+  root: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  container: {
+  layout: {
+    flex: 1,
     paddingHorizontal: spacing.xl,
-    gap: spacing.lg,
     backgroundColor: colors.background,
+    gap: spacing.md,
+  },
+  progressBlock: {
+    gap: spacing.sm,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  progressDot: {
+    flex: 1,
+    height: 10,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  scroll: {
+    flex: 1,
+  },
+  container: {
     flexGrow: 1,
-    minHeight: '100%',
-    justifyContent: 'center',
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
   },
   centerBlock: {
     alignItems: 'center',
     gap: spacing.md,
-    paddingVertical: spacing['2xl'],
+    paddingTop: spacing.xl,
   },
   heroIcon: {
     width: 96,
     height: 96,
     borderRadius: radii.pill,
-    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   centerText: {
     textAlign: 'center',
-    maxWidth: 260,
+    maxWidth: 280,
+  },
+  tipCard: {
+    borderWidth: 1,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   section: {
     gap: spacing.md,
@@ -428,10 +663,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-  optionChipSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
   petList: {
     gap: spacing.sm,
   },
@@ -454,11 +685,40 @@ const styles = StyleSheet.create({
   petItemName: {
     fontWeight: '600',
   },
-  secondaryCta: {
-    alignSelf: 'center',
+  summaryHint: {
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+  navigationRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  navButton: {
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.xs,
-    marginTop: spacing.sm,
+    borderWidth: 1,
+    flex: 1,
+  },
+  navButtonGhost: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    maxWidth: 120,
+  },
+  navButtonPrimary: {
+    borderColor: colors.primary,
+    flex: 2,
+  },
+  navPrimaryLabel: {
+    fontWeight: '700',
+  },
+  navButtonDisabled: {
+    opacity: 0.55,
   },
 });
